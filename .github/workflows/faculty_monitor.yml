@@ -1,9 +1,9 @@
 name: Faculty Monitor
 
 on:
-  # Scheduled runs: Monday and Thursday at 3 AM UTC
+  # Scheduled runs: Monday and Thursday at 8 PM UTC
   schedule:
-    - cron: '0 3 * * 1,4'
+    - cron: '0 20 * * 1,4'
 
   # Allow manual triggering
   workflow_dispatch:
