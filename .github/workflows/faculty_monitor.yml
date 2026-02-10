@@ -1,0 +1,112 @@
+name: Faculty Monitor
+
+on:
+  # Scheduled runs: Monday and Thursday at 3 AM UTC
+  schedule:
+    - cron: '0 3 * * 1,4'
+
+  # Allow manual triggering
+  workflow_dispatch:
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          playwright install chromium
+
+      - name: Run FacultySnipe
+        id: scrape
+        env:
+          GOOGLE_SHEETS_CREDENTIALS: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}
+          GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
+          LOG_LEVEL: INFO
+        run: |
+          cd src
+          START_TIME=$(date +%s)
+          python main.py 2>&1 | tee ../run.log
+          END_TIME=$(date +%s)
+          EXECUTION_TIME=$((END_TIME - START_TIME))
+          echo "execution_time=$EXECUTION_TIME" >> $GITHUB_OUTPUT
+
+      - name: Parse run statistics
+        id: stats
+        if: always()
+        run: |
+          # Parse logs for statistics
+          UNIVERSITIES=$(grep -c "Processing university:" run.log 2>/dev/null || echo "0")
+          NEW_FACULTY=$(grep -oP "New: \K\d+" run.log 2>/dev/null | awk '{s+=$1} END {print s}' || echo "0")
+          CHANGED_FACULTY=$(grep -oP "Changed: \K\d+" run.log 2>/dev/null | awk '{s+=$1} END {print s}' || echo "0")
+
+          echo "universities=$UNIVERSITIES" >> $GITHUB_OUTPUT
+          echo "new_faculty=$NEW_FACULTY" >> $GITHUB_OUTPUT
+          echo "changed_faculty=$CHANGED_FACULTY" >> $GITHUB_OUTPUT
+
+      - name: Send Success Summary
+        if: success()
+        env:
+          GOOGLE_SHEETS_CREDENTIALS: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}
+          GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
+        run: |
+          python scripts/send_run_summary.py \
+            --status success \
+            --universities ${{ steps.stats.outputs.universities }} \
+            --new-faculty ${{ steps.stats.outputs.new_faculty }} \
+            --changed-faculty ${{ steps.stats.outputs.changed_faculty }} \
+            --execution-time ${{ steps.scrape.outputs.execution_time }}
+
+      - name: Send Failure Alert
+        if: failure()
+        env:
+          GOOGLE_SHEETS_CREDENTIALS: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}
+          GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
+        run: |
+          # Extract error from logs
+          ERROR_MSG=$(tail -20 run.log 2>/dev/null | grep -i "error" | head -5 | tr '\n' ' ' || echo "Unknown error - check logs")
+
+          python scripts/send_run_summary.py \
+            --status failure \
+            --universities ${{ steps.stats.outputs.universities }} \
+            --new-faculty ${{ steps.stats.outputs.new_faculty }} \
+            --changed-faculty ${{ steps.stats.outputs.changed_faculty }} \
+            --execution-time ${{ steps.scrape.outputs.execution_time }} \
+            --errors "$ERROR_MSG"
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: faculty-monitor-logs-${{ github.run_number }}
+          path: |
+            *.log
+            src/*.log
+          retention-days: 30

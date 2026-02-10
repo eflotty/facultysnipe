@@ -1,0 +1,38 @@
+PASTE THIS INTO A NEW TAB IN YOUR GOOGLE SHEET CALLED "FIELD GUIDE"
+================================================================================
+
+Column	Field Name	Required?	What to Enter	Examples	Notes
+A	university_id	YES	Short unique ID (lowercase, underscores)	miami_microbio, stanford_bio, uf_biochem	Must be unique, no spaces or special chars
+B	university_name	YES	Display name for emails	Miami - Microbiology, Stanford - Biology	Human-readable name
+C	scraper_class	YES	Python class name (exact!)	MiamiMicrobiologyScraper, UFBiochemScraper	Leave blank if scraper not built yet
+D	url	YES	Full URL to faculty page	https://med.miami.edu/departments/...	Must start with https://
+E	enabled	YES	TRUE or FALSE	TRUE = active, FALSE = skip	ALL CAPS! Use FALSE while testing
+F	scraper_type	YES	static or dynamic	static (most sites), dynamic (JavaScript)	lowercase! Use static for 90% of sites
+G	sales_rep_email	YES	Email for notifications	rep@company.com, yourname@gmail.com	Can be same for multiple universities
+H	last_run	AUTO	System fills this	2026-02-04 10:30:00	Don't edit manually!
+I	last_status	AUTO	System fills this	SUCCESS, FAILED, SKIPPED	Don't edit manually!
+J	notes	OPTIONAL	Your notes	Test university, Production ready	Any text you want
+
+QUICK RULES:
+- enabled: Must be TRUE or FALSE (all caps)
+- scraper_type: Must be static or dynamic (lowercase)
+- university_id: No spaces, lowercase only, use underscores
+- url: Must be complete URL starting with https://
+- sales_rep_email: Must be valid email
+
+WHEN TO USE static vs dynamic:
+- static: Page loads instantly, you can see faculty in "View Source" (use this for 90% of sites)
+- dynamic: Page has loading animations, built with React/Vue/Angular
+
+ADDING NEW UNIVERSITY:
+1. Fill in columns A-G
+2. Set enabled to FALSE
+3. Leave scraper_class blank initially
+4. Notify developer to build scraper
+5. After testing, change enabled to TRUE
+
+EXAMPLE ROW (Production Ready):
+miami_microbio | Miami - Microbiology | MiamiMicrobiologyScraper | https://med.miami.edu/... | TRUE | static | rep@company.com | | | Production
+
+EXAMPLE ROW (In Development):
+stanford_bio | Stanford - Biology | | https://biology.stanford.edu/people | FALSE | static | rep@company.com | | | Needs scraper
