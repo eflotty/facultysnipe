@@ -17,7 +17,15 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 from google_sheets import GoogleSheetsManager
 
 app = Flask(__name__)
-sheets = GoogleSheetsManager()
+
+# Lazy load sheets manager to avoid startup errors
+_sheets = None
+
+def get_sheets():
+    global _sheets
+    if _sheets is None:
+        _sheets = GoogleSheetsManager()
+    return _sheets
 
 
 @app.route('/')
@@ -48,7 +56,7 @@ def add_university():
             return jsonify({'success': False, 'error': 'URL must start with http:// or https://'}), 400
 
         # Add URL to Google Sheets CONFIG tab
-        # The auto-fill logic will automatically populate university_id, university_name, etc.
+        sheets = get_sheets()
         config_sheet = sheets.spreadsheet.worksheet('CONFIG')
 
         # Get next empty row
@@ -67,7 +75,7 @@ def add_university():
 
         return jsonify({
             'success': True,
-            'message': f'✅ University added and ENABLED! Click "Run Monitor Now" to start scraping.',
+            'message': f'✅ University added and ENABLED! Will be scraped on next scheduled run (Mon/Thu 8 PM UTC).',
             'url': url
         })
 
@@ -79,6 +87,7 @@ def add_university():
 def get_universities():
     """Get list of all universities from CONFIG sheet"""
     try:
+        sheets = get_sheets()
         universities = sheets.get_universities_config()
 
         # Format for frontend
@@ -128,6 +137,7 @@ def run_monitor():
 def get_system_status():
     """Get recent run history from SYSTEM_STATUS tab"""
     try:
+        sheets = get_sheets()
         # Get SYSTEM_STATUS sheet
         try:
             status_sheet = sheets.spreadsheet.worksheet('SYSTEM_STATUS')
@@ -141,7 +151,7 @@ def get_system_status():
             successful_runs = sum(1 for r in records if r.get('status') == 'SUCCESS')
             success_rate = (successful_runs / total_runs * 100) if total_runs > 0 else 0
 
-            # Get next scheduled run (Monday or Thursday at 3 AM UTC)
+            # Get next scheduled run (Monday or Thursday at 8 PM UTC)
             from datetime import datetime, timedelta
             now = datetime.utcnow()
             next_run = None
@@ -149,7 +159,7 @@ def get_system_status():
             # Find next Monday or Thursday
             days_ahead = {0: 1, 1: 3, 2: 2, 3: 1, 4: 4, 5: 3, 6: 2}  # Mon=0, Thu=3
             days_to_add = days_ahead.get(now.weekday(), 1)
-            next_run = (now + timedelta(days=days_to_add)).replace(hour=3, minute=0, second=0)
+            next_run = (now + timedelta(days=days_to_add)).replace(hour=20, minute=0, second=0)
 
             return jsonify({
                 'success': True,
