@@ -7,4 +7,5 @@ python-dotenv>=1.0.0
 lxml>=4.9.3
 anthropic>=0.18.0  # Optional: for AI-powered scraping fallback
 flask>=3.0.0  # Web interface
+gunicorn>=21.2.0  # Production web server
 
