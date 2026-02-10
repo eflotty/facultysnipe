@@ -68,7 +68,15 @@ class GoogleSheetsManager:
         self.logger = setup_logging('GoogleSheets')
 
         # Authenticate
-        creds_dict = json.loads(GOOGLE_SHEETS_CREDENTIALS)
+        # Try to decode from base64 first (for Render compatibility)
+        try:
+            import base64
+            creds_str = base64.b64decode(GOOGLE_SHEETS_CREDENTIALS).decode()
+            creds_dict = json.loads(creds_str)
+        except:
+            # Fall back to direct JSON parsing (for local .env)
+            creds_dict = json.loads(GOOGLE_SHEETS_CREDENTIALS)
+
         scopes = [
             'https://www.googleapis.com/auth/spreadsheets',
             'https://www.googleapis.com/auth/drive'
