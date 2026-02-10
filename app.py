@@ -106,7 +106,10 @@ def get_universities():
         return jsonify({'success': True, 'universities': result})
 
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"ERROR in get_universities: {error_details}")
+        return jsonify({'success': False, 'error': str(e), 'traceback': error_details}), 500
 
 
 @app.route('/api/run-monitor', methods=['POST'])
