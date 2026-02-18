@@ -53,9 +53,14 @@ jobs:
         if: always()
         run: |
           # Parse logs for statistics
-          UNIVERSITIES=$(grep -c "Processing university:" run.log 2>/dev/null || echo "0")
-          NEW_FACULTY=$(grep -oP "New: \K\d+" run.log 2>/dev/null | awk '{s+=$1} END {print s}' || echo "0")
-          CHANGED_FACULTY=$(grep -oP "Changed: \K\d+" run.log 2>/dev/null | awk '{s+=$1} END {print s}' || echo "0")
+          # Note: use || true so grep exit code 1 (no matches) doesn't trigger the fallback
+          # and produce duplicate output that breaks GITHUB_OUTPUT format
+          UNIVERSITIES=$(grep -c "Processing university:" run.log 2>/dev/null || true)
+          UNIVERSITIES=${UNIVERSITIES:-0}
+          NEW_FACULTY=$(grep -oP "New: \K\d+" run.log 2>/dev/null | awk '{s+=$1} END {print (s ? s : 0)}' || true)
+          NEW_FACULTY=${NEW_FACULTY:-0}
+          CHANGED_FACULTY=$(grep -oP "Changed: \K\d+" run.log 2>/dev/null | awk '{s+=$1} END {print (s ? s : 0)}' || true)
+          CHANGED_FACULTY=${CHANGED_FACULTY:-0}
 
           echo "universities=$UNIVERSITIES" >> $GITHUB_OUTPUT
           echo "new_faculty=$NEW_FACULTY" >> $GITHUB_OUTPUT
