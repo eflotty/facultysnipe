@@ -867,42 +867,48 @@ class GoogleSheetsManager:
                     'values': [['=COUNTA(CONFIG!A2:A)']]
                 },
                 {
+                    # SUMPRODUCT handles both text "TRUE" and boolean TRUE in enabled column
                     'range': 'B5',
-                    'values': [['=COUNTIF(CONFIG!E2:E,"TRUE")']]
+                    'values': [['=SUMPRODUCT((CONFIG!E2:E1000="TRUE")+(CONFIG!E2:E1000=TRUE)>0)']]
                 },
                 {
                     'range': 'B6',
                     'values': [['=COUNTA(\'NEW CONTACTS\'!A2:A)']]
                 },
                 {
+                    # Dates stored as text strings - use SUMPRODUCT+DATEVALUE for reliable comparison
                     'range': 'B7',
-                    'values': [['=COUNTIFS(\'NEW CONTACTS\'!A2:A,">"&TODAY()-7,\'NEW CONTACTS\'!K2:K,"NEW")']]
+                    'values': [['=SUMPRODUCT((IFERROR(DATEVALUE(LEFT(\'NEW CONTACTS\'!A2:A1000,10)),0)>=TODAY()-7)*(\'NEW CONTACTS\'!K2:K1000="NEW"))']]
                 },
             ]
 
             # Add formulas for last 10 contacts
+            # Uses COUNTA to find actual last filled row (ROWS() returns total sheet rows, not data rows)
             for i in range(1, 11):
                 row = 12 + i
+                coa = "COUNTA('NEW CONTACTS'!A:A)"
+                cond = f"COUNTA('NEW CONTACTS'!A2:A)>={i}"
+                idx = f"{coa}+1-{i}"
                 formula_updates.extend([
                     {
                         'range': f'A{row}',
-                        'values': [[f'=IF(ROWS(\'NEW CONTACTS\'!A:A)>={i+1},INDEX(\'NEW CONTACTS\'!B:B,ROWS(\'NEW CONTACTS\'!A:A)-{i-1}),"")']]
+                        'values': [[f"=IF({cond},INDEX('NEW CONTACTS'!B:B,{idx}),\"\")"]]
                     },
                     {
                         'range': f'B{row}',
-                        'values': [[f'=IF(ROWS(\'NEW CONTACTS\'!A:A)>={i+1},INDEX(\'NEW CONTACTS\'!C:C,ROWS(\'NEW CONTACTS\'!A:A)-{i-1}),"")']]
+                        'values': [[f"=IF({cond},INDEX('NEW CONTACTS'!C:C,{idx}),\"\")"]]
                     },
                     {
                         'range': f'C{row}',
-                        'values': [[f'=IF(ROWS(\'NEW CONTACTS\'!A:A)>={i+1},INDEX(\'NEW CONTACTS\'!D:D,ROWS(\'NEW CONTACTS\'!A:A)-{i-1}),"")']]
+                        'values': [[f"=IF({cond},INDEX('NEW CONTACTS'!D:D,{idx}),\"\")"]]
                     },
                     {
                         'range': f'D{row}',
-                        'values': [[f'=IF(ROWS(\'NEW CONTACTS\'!A:A)>={i+1},INDEX(\'NEW CONTACTS\'!E:E,ROWS(\'NEW CONTACTS\'!A:A)-{i-1}),"")']]
+                        'values': [[f"=IF({cond},INDEX('NEW CONTACTS'!E:E,{idx}),\"\")"]]
                     },
                     {
                         'range': f'E{row}',
-                        'values': [[f'=IF(ROWS(\'NEW CONTACTS\'!A:A)>={i+1},INDEX(\'NEW CONTACTS\'!A:A,ROWS(\'NEW CONTACTS\'!A:A)-{i-1}),"")']]
+                        'values': [[f"=IF({cond},INDEX('NEW CONTACTS'!A:A,{idx}),\"\")"]]
                     },
                 ])
 
