@@ -692,11 +692,28 @@ class GoogleSheetsManager:
 
                 self.logger.info("✓ Created NEW CONTACTS sheet")
 
-            # Prepare rows to add
+            # Load existing faculty_ids from NEW CONTACTS to prevent duplicates
+            existing_rows = contacts_sheet.get_all_values()
+            if len(existing_rows) > 1:
+                # Faculty ID is column J (index 9)
+                existing_contact_ids = {
+                    row[9].strip()
+                    for row in existing_rows[1:]
+                    if len(row) > 9 and row[9].strip()
+                }
+            else:
+                existing_contact_ids = set()
+
+            # Prepare rows to add - skip any already in NEW CONTACTS
             now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             rows = []
+            skipped = 0
 
             for faculty in new_faculty:
+                if faculty.faculty_id in existing_contact_ids:
+                    skipped += 1
+                    self.logger.debug(f"Skipping duplicate in NEW CONTACTS: {faculty.name} ({faculty.faculty_id})")
+                    continue
                 row = [
                     now,                                    # Date Added
                     university_name,                        # University
@@ -713,7 +730,14 @@ class GoogleSheetsManager:
                 ]
                 rows.append(row)
 
-            # Append all rows at once
+            if skipped:
+                self.logger.info(f"Skipped {skipped} already-existing contacts in NEW CONTACTS")
+
+            if not rows:
+                self.logger.info("No truly new contacts to add (all already in NEW CONTACTS)")
+                return
+
+            # Append only genuinely new contacts
             contacts_sheet.append_rows(rows)
 
             self.logger.info(f"✓ Added {len(rows)} new contacts to NEW CONTACTS sheet")
