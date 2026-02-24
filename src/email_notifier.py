@@ -97,6 +97,53 @@ class EmailNotifier:
 
         return False
 
+    def send_email(
+        self,
+        to_email: str,
+        subject: str,
+        body: str,
+        is_html: bool = False
+    ) -> bool:
+        """
+        Send a generic email
+
+        Args:
+            to_email: Recipient email address
+            subject: Email subject
+            body: Email body content
+            is_html: Whether body is HTML (default: False for plain text)
+
+        Returns:
+            True if email sent successfully
+        """
+        try:
+            # Create email
+            if is_html:
+                msg = MIMEText(body, 'html')
+            else:
+                msg = MIMEText(body, 'plain')
+
+            msg['Subject'] = subject
+            msg['From'] = SENDER_EMAIL
+            msg['To'] = to_email
+
+            # Send email
+            with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=30) as server:
+                server.starttls()
+                server.login(SMTP_USERNAME, SMTP_PASSWORD)
+                server.send_message(msg)
+
+            self.logger.info(f"✓ Sent email to {to_email}: {subject}")
+            return True
+
+        except smtplib.SMTPAuthenticationError as e:
+            self.logger.error(f"✗ SMTP authentication failed for {to_email}: {e}")
+            return False
+
+        except Exception as e:
+            self.logger.error(f"✗ Failed to send email to {to_email}: {e}")
+            return False
+
     def _create_html_body(
         self,
         university_name: str,

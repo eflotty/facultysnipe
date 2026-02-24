@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FacultySnipe - University Monitor</title>
+    <title>FacultySnipe - Directory Monitor</title>
     <style>
         * {
             margin: 0;
@@ -287,14 +287,217 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
+
+        /* Tab Navigation */
+        .tab-nav {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 10px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 15px 20px;
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            color: #9ca3af;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(102, 126, 234, 0.5);
+        }
+
+        .tab-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: transparent;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Browse UI Components */
+        .university-group {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .university-group:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(102, 126, 234, 0.5);
+            transform: translateX(5px);
+        }
+
+        .university-group-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .university-group-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: #e0e0e0;
+        }
+
+        .contact-count-badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .directory-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .directory-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateX(5px);
+        }
+
+        .contact-card {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .contact-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 15px;
+        }
+
+        .contact-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: #e0e0e0;
+        }
+
+        .contact-info-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 8px 0;
+            font-size: 14px;
+            color: #9ca3af;
+        }
+
+        .new-badge {
+            background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .old-badge {
+            background: rgba(156, 163, 175, 0.3);
+            color: #9ca3af;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .breadcrumb {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            padding: 15px;
+            font-size: 14px;
+            color: #9ca3af;
+        }
+
+        .breadcrumb-item {
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+
+        .breadcrumb-item:hover {
+            color: #667eea;
+        }
+
+        .breadcrumb-separator {
+            color: #4b5563;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .pagination-btn {
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            color: #e0e0e0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .pagination-btn:hover:not(:disabled) {
+            background: rgba(102, 126, 234, 0.2);
+        }
+
+        .pagination-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
             <div class="logo">FacultySnipe</div>
-            <div class="tagline">Automated University Faculty Monitoring</div>
+            <div class="tagline">Automated Faculty Directory Monitoring</div>
         </div>
+
+        <!-- Tab Navigation -->
+        <div class="tab-nav">
+            <button class="tab-btn active" onclick="switchTab('dashboard')">
+                📊 Dashboard
+            </button>
+            <button class="tab-btn" onclick="switchTab('browse')">
+                👥 Browse Contacts
+            </button>
+        </div>
+
+        <!-- Dashboard Tab (existing content) -->
+        <div id="tab-dashboard" class="tab-content active">
 
         <!-- System Status Banner -->
         <div id="system-status-banner" class="card" style="background: rgba(102, 126, 234, 0.1); border: 1px solid rgba(102, 126, 234, 0.3); margin-bottom: 30px; padding: 20px;">
@@ -326,9 +529,9 @@
             </div>
         </div>
 
-        <!-- Add University Card -->
+        <!-- Add Directory Card -->
         <div class="card">
-            <div class="card-title">Add University</div>
+            <div class="card-title">Add Directory</div>
             <div class="card-subtitle">Enter faculty directory URL and sales rep email for notifications</div>
 
             <div id="alert-container"></div>
@@ -359,7 +562,7 @@
                 </div>
 
                 <button type="submit" class="btn" id="submit-btn">
-                    Add University
+                    Add Directory
                 </button>
             </form>
         </div>
@@ -385,14 +588,14 @@
             </div>
         </div>
 
-        <!-- Universities List Card -->
+        <!-- Directories List Card -->
         <div class="card">
-            <div class="card-title">Monitored Universities</div>
-            <div class="card-subtitle">All universities in your configuration</div>
+            <div class="card-title">Monitored Directories</div>
+            <div class="card-subtitle">All directories in your configuration</div>
 
             <div style="background: rgba(102, 126, 234, 0.1); border: 1px solid rgba(102, 126, 234, 0.2); border-radius: 10px; padding: 15px; margin-bottom: 20px;">
                 <div style="font-size: 14px; color: #d1d5db;">
-                    <strong>📅 Automatic Monitoring:</strong> The system runs automatically every <strong>Monday</strong> and <strong>Thursday at 8:00 PM UTC</strong>. New universities added here will be included in the next scheduled run.
+                    <strong>📅 Automatic Monitoring:</strong> The system runs automatically every <strong>Monday</strong> and <strong>Thursday at 8:00 PM UTC</strong>. New directories added here will be included in the next scheduled run.
                 </div>
             </div>
 
@@ -403,7 +606,31 @@
                 </div>
             </div>
         </div>
-    </div>
+
+        </div> <!-- End Dashboard Tab -->
+
+        <!-- Browse Tab -->
+        <div id="tab-browse" class="tab-content">
+            <!-- Breadcrumb Navigation -->
+            <div id="breadcrumb" class="card" style="display: none;">
+                <!-- Dynamic breadcrumb -->
+            </div>
+
+            <!-- Main Browse Container -->
+            <div id="browse-container" class="card">
+                <div class="card-title">Browse Contacts</div>
+                <div id="browse-content">
+                    <!-- Dynamic content loads here -->
+                </div>
+            </div>
+
+            <!-- Pagination Controls -->
+            <div id="pagination-controls" style="display: none;">
+                <!-- Previous/Next buttons -->
+            </div>
+        </div>
+
+    </div> <!-- End Container -->
 
     <script>
         // Show alert message
@@ -418,7 +645,7 @@
             }, 5000);
         }
 
-        // Add university form submission
+        // Add directory form submission
         document.getElementById('add-university-form').addEventListener('submit', async (e) => {
             e.preventDefault();
 
@@ -449,17 +676,17 @@
                     showAlert(data.error, 'error');
                 }
             } catch (error) {
-                showAlert('Failed to add university: ' + error.message, 'error');
+                showAlert('Failed to add directory: ' + error.message, 'error');
             } finally {
                 submitBtn.disabled = false;
-                submitBtn.innerHTML = 'Add University';
+                submitBtn.innerHTML = 'Add Directory';
             }
         });
 
-        // Load universities
+        // Load directories
         async function loadUniversities() {
             const container = document.getElementById('universities-container');
-            container.innerHTML = '<div style="text-align: center; padding: 20px; color: #9ca3af;"><div class="spinner"></div><span class="loading-text">Loading universities...</span></div>';
+            container.innerHTML = '<div style="text-align: center; padding: 20px; color: #9ca3af;"><div class="spinner"></div><span class="loading-text">Loading directories...</span></div>';
 
             try {
                 const response = await fetch('/api/universities');
@@ -474,7 +701,7 @@
                     document.getElementById('stat-success').textContent = universities.filter(u => u.last_status === 'SUCCESS').length;
 
                     if (universities.length === 0) {
-                        container.innerHTML = '<div style="text-align: center; padding: 20px; color: #9ca3af;">No universities added yet</div>';
+                        container.innerHTML = '<div style="text-align: center; padding: 20px; color: #9ca3af;">No directories added yet</div>';
                         return;
                     }
 
@@ -502,10 +729,10 @@
                         `).join('') +
                         '</div>';
                 } else {
-                    container.innerHTML = '<div style="text-align: center; padding: 20px; color: #f87171;">Error loading universities</div>';
+                    container.innerHTML = '<div style="text-align: center; padding: 20px; color: #f87171;">Error loading directories</div>';
                 }
             } catch (error) {
-                container.innerHTML = '<div style="text-align: center; padding: 20px; color: #f87171;">Failed to load universities</div>';
+                container.innerHTML = '<div style="text-align: center; padding: 20px; color: #f87171;">Failed to load directories</div>';
             }
         }
 
@@ -567,6 +794,282 @@
                 document.getElementById('last-run-status').textContent = 'Status unavailable';
                 document.getElementById('recent-runs').textContent = '--';
             }
+        }
+
+        // Browse State Management
+        const browseState = {
+            view: 'universities',  // 'universities' | 'directories' | 'contacts'
+            selectedParent: null,
+            selectedDirectory: null,
+            currentPage: 0,
+            pageSize: 50,
+            cachedGroups: null
+        };
+
+        // Tab Switching
+        function switchTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(el => {
+                el.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-btn').forEach(el => {
+                el.classList.remove('active');
+            });
+
+            // Show selected tab
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+            event.target.classList.add('active');
+
+            // Load browse data if switching to browse tab
+            if (tabName === 'browse' && !browseState.cachedGroups) {
+                loadUniversityGroups();
+            }
+        }
+
+        // Load University Groups (Level 1)
+        async function loadUniversityGroups() {
+            const container = document.getElementById('browse-content');
+            container.innerHTML = '<div style="text-align: center; padding: 40px;"><div class="spinner"></div><span class="loading-text">Loading universities...</span></div>';
+
+            try {
+                const response = await fetch('/api/universities/grouped');
+                const data = await response.json();
+
+                if (data.success) {
+                    browseState.cachedGroups = data.data;
+                    browseState.view = 'universities';
+                    renderUniversityGroups(data.data);
+                } else {
+                    container.innerHTML = '<div style="text-align: center; padding: 40px; color: #f87171;">Error loading universities</div>';
+                }
+            } catch (error) {
+                container.innerHTML = '<div style="text-align: center; padding: 40px; color: #f87171;">Failed to load universities</div>';
+            }
+        }
+
+        // Render University Groups
+        function renderUniversityGroups(groups) {
+            const container = document.getElementById('browse-content');
+
+            if (Object.keys(groups).length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 40px; color: #9ca3af;">No universities found</div>';
+                return;
+            }
+
+            const html = Object.entries(groups).map(([parent, data]) => `
+                <div class="university-group" onclick="showDirectories('${escapeHtml(parent)}')">
+                    <div class="university-group-header">
+                        <div>
+                            <div class="university-group-name">${escapeHtml(parent)}</div>
+                            <div style="font-size: 13px; color: #9ca3af; margin-top: 5px;">
+                                ${data.directories.length} department${data.directories.length !== 1 ? 's' : ''}
+                            </div>
+                        </div>
+                        <div>
+                            <span class="contact-count-badge">
+                                ${data.total_new} NEW
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            container.innerHTML = html;
+            document.getElementById('breadcrumb').style.display = 'none';
+        }
+
+        // Show Directories for Selected University (Level 2)
+        function showDirectories(parentUniversity) {
+            browseState.view = 'directories';
+            browseState.selectedParent = parentUniversity;
+
+            const data = browseState.cachedGroups[parentUniversity];
+            const container = document.getElementById('browse-content');
+
+            const html = data.directories.map(dir => `
+                <div class="directory-item" onclick="showContacts('${escapeHtml(dir.university_name)}')">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="font-size: 16px; font-weight: 600; color: #e0e0e0;">${escapeHtml(dir.department)}</div>
+                            <div style="font-size: 13px; color: #9ca3af; margin-top: 4px;">${escapeHtml(dir.url)}</div>
+                            <div style="margin-top: 8px;">
+                                <span class="status-badge ${dir.enabled ? 'status-enabled' : 'status-disabled'}">
+                                    ${dir.enabled ? 'Enabled' : 'Disabled'}
+                                </span>
+                                ${dir.last_status ? `
+                                    <span class="status-badge ${dir.last_status === 'SUCCESS' ? 'status-success' : 'status-failed'}">
+                                        ${dir.last_status}
+                                    </span>
+                                ` : ''}
+                            </div>
+                        </div>
+                        <div>
+                            ${dir.contacts.new > 0 ? `<div class="new-badge">${dir.contacts.new} NEW</div>` : ''}
+                            <div style="font-size: 13px; color: #9ca3af; margin-top: 5px; text-align: right;">
+                                ${dir.contacts.old} contacts
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            container.innerHTML = html;
+            updateBreadcrumb();
+        }
+
+        // Show Contacts for Selected Directory (Level 3)
+        async function showContacts(universityName, page = 0) {
+            browseState.view = 'contacts';
+            browseState.selectedDirectory = universityName;
+            browseState.currentPage = page;
+
+            const container = document.getElementById('browse-content');
+            container.innerHTML = '<div style="text-align: center; padding: 40px;"><div class="spinner"></div><span class="loading-text">Loading contacts...</span></div>';
+
+            try {
+                const offset = page * browseState.pageSize;
+                const response = await fetch(`/api/contacts?university_name=${encodeURIComponent(universityName)}&status=NEW&limit=${browseState.pageSize}&offset=${offset}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    renderContacts(data.contacts, data.total);
+                    updateBreadcrumb();
+                } else {
+                    container.innerHTML = '<div style="text-align: center; padding: 40px; color: #f87171;">Error loading contacts</div>';
+                }
+            } catch (error) {
+                container.innerHTML = '<div style="text-align: center; padding: 40px; color: #f87171;">Failed to load contacts</div>';
+            }
+        }
+
+        // Render Contacts
+        function renderContacts(contacts, total) {
+            const container = document.getElementById('browse-content');
+
+            if (contacts.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 40px; color: #9ca3af;">No NEW contacts found</div>';
+                document.getElementById('pagination-controls').style.display = 'none';
+                return;
+            }
+
+            const html = contacts.map(contact => `
+                <div class="contact-card">
+                    <div class="contact-header">
+                        <div>
+                            <div class="contact-name">${escapeHtml(contact.name)}</div>
+                            <div style="font-size: 14px; color: #9ca3af; font-style: italic; margin-top: 4px;">
+                                ${escapeHtml(contact.title || 'Faculty Member')}
+                            </div>
+                        </div>
+                        <span class="${contact.status === 'NEW' ? 'new-badge' : 'old-badge'}">
+                            ${contact.status}
+                        </span>
+                    </div>
+                    ${contact.email ? `
+                        <div class="contact-info-row">
+                            <span>📧</span>
+                            <a href="mailto:${escapeHtml(contact.email)}" style="color: #667eea;">${escapeHtml(contact.email)}</a>
+                        </div>
+                    ` : ''}
+                    ${contact.phone ? `
+                        <div class="contact-info-row">
+                            <span>📞</span>
+                            <span>${escapeHtml(contact.phone)}</span>
+                        </div>
+                    ` : ''}
+                    ${contact.department ? `
+                        <div class="contact-info-row">
+                            <span>🏛️</span>
+                            <span>${escapeHtml(contact.department)}</span>
+                        </div>
+                    ` : ''}
+                    ${contact.profile_url ? `
+                        <div class="contact-info-row">
+                            <span>🔗</span>
+                            <a href="${escapeHtml(contact.profile_url)}" target="_blank" style="color: #667eea;">View Profile</a>
+                        </div>
+                    ` : ''}
+                    ${contact.research_interests ? `
+                        <div class="contact-info-row">
+                            <span>🔬</span>
+                            <span>${escapeHtml(contact.research_interests)}</span>
+                        </div>
+                    ` : ''}
+                    <div style="font-size: 12px; color: #6b7280; margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255, 255, 255, 0.1);">
+                        Added: ${escapeHtml(contact.date_added)}
+                    </div>
+                </div>
+            `).join('');
+
+            container.innerHTML = html;
+
+            // Show pagination if needed
+            renderPagination(total);
+        }
+
+        // Render Pagination
+        function renderPagination(total) {
+            const totalPages = Math.ceil(total / browseState.pageSize);
+
+            if (totalPages <= 1) {
+                document.getElementById('pagination-controls').style.display = 'none';
+                return;
+            }
+
+            const paginationHtml = `
+                <div class="pagination">
+                    <button class="pagination-btn" onclick="showContacts('${escapeHtml(browseState.selectedDirectory)}', ${browseState.currentPage - 1})" ${browseState.currentPage === 0 ? 'disabled' : ''}>
+                        ← Previous
+                    </button>
+                    <span style="padding: 10px 20px; color: #9ca3af;">
+                        Page ${browseState.currentPage + 1} of ${totalPages}
+                    </span>
+                    <button class="pagination-btn" onclick="showContacts('${escapeHtml(browseState.selectedDirectory)}', ${browseState.currentPage + 1})" ${browseState.currentPage >= totalPages - 1 ? 'disabled' : ''}>
+                        Next →
+                    </button>
+                </div>
+            `;
+
+            document.getElementById('pagination-controls').innerHTML = paginationHtml;
+            document.getElementById('pagination-controls').style.display = 'block';
+        }
+
+        // Update Breadcrumb Navigation
+        function updateBreadcrumb() {
+            const breadcrumb = document.getElementById('breadcrumb');
+            let html = '';
+
+            if (browseState.view === 'universities') {
+                breadcrumb.style.display = 'none';
+                return;
+            }
+
+            html = '<div class="breadcrumb">';
+            html += '<span class="breadcrumb-item" onclick="loadUniversityGroups()">🏠 All Universities</span>';
+
+            if (browseState.selectedParent) {
+                html += '<span class="breadcrumb-separator">›</span>';
+                html += `<span class="breadcrumb-item" onclick="showDirectories('${escapeHtml(browseState.selectedParent)}')">${escapeHtml(browseState.selectedParent)}</span>`;
+            }
+
+            if (browseState.selectedDirectory && browseState.view === 'contacts') {
+                html += '<span class="breadcrumb-separator">›</span>';
+                const department = browseState.selectedDirectory.split(' - ')[1] || browseState.selectedDirectory;
+                html += `<span style="color: #e0e0e0;">${escapeHtml(department)}</span>`;
+            }
+
+            html += '</div>';
+
+            breadcrumb.innerHTML = html;
+            breadcrumb.style.display = 'block';
+        }
+
+        // Escape HTML helper function
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
         // Load universities on page load

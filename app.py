@@ -42,7 +42,7 @@ def health():
 
 @app.route('/api/add-university', methods=['POST'])
 def add_university():
-    """Add university URL to Google Sheets"""
+    """Add directory URL to Google Sheets"""
     try:
         data = request.get_json()
         url = data.get('url', '').strip()
@@ -75,7 +75,7 @@ def add_university():
 
         return jsonify({
             'success': True,
-            'message': f'✅ University added and ENABLED! Will be scraped on next scheduled run (Mon/Thu 8 PM UTC).',
+            'message': f'✅ Directory added and ENABLED! Will be scraped on next scheduled run (Mon/Thu 8 PM UTC).',
             'url': url
         })
 
@@ -189,6 +189,69 @@ def get_system_status():
                 'message': 'System status tracking will be available after first automated run'
             })
 
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/universities/grouped', methods=['GET'])
+def get_universities_grouped():
+    """Get universities grouped by parent institution"""
+    try:
+        sheets = get_sheets()
+        grouped = sheets.get_grouped_universities()
+        return jsonify({
+            'success': True,
+            'data': grouped,
+            'timestamp': datetime.now().isoformat()
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/contacts', methods=['GET'])
+def get_contacts():
+    """Get contacts with filtering and pagination"""
+    try:
+        university_name = request.args.get('university_name')
+        status = request.args.get('status', 'NEW')
+        limit = int(request.args.get('limit', 50))
+        offset = int(request.args.get('offset', 0))
+
+        sheets = get_sheets()
+        result = sheets.get_contacts_from_new_contacts_sheet(
+            university_name=university_name,
+            status=status,
+            limit=limit,
+            offset=offset
+        )
+
+        return jsonify({
+            'success': True,
+            **result
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/contacts/summary', methods=['GET'])
+def get_contacts_summary():
+    """Get contact count statistics"""
+    try:
+        sheets = get_sheets()
+        counts = sheets.get_contact_counts_by_university()
+
+        total_new = sum(v['new'] for v in counts.values())
+        total_old = sum(v['old'] for v in counts.values())
+
+        return jsonify({
+            'success': True,
+            'summary': {
+                'total_contacts': total_new + total_old,
+                'total_new': total_new,
+                'total_old': total_old
+            },
+            'by_university': counts
+        })
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 

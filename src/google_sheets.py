@@ -3,7 +3,7 @@ Google Sheets integration for data storage and configuration
 """
 import gspread
 from google.oauth2.service_account import Credentials
-from typing import List, Dict, Tuple, Optional
+from typing import List, Dict, Tuple, Optional, Any
 import json
 from datetime import datetime
 from scrapers.base_scraper import Faculty
@@ -744,6 +744,287 @@ class GoogleSheetsManager:
 
         except Exception as e:
             self.logger.error(f"Failed to add to NEW CONTACTS sheet: {e}")
+
+    @retry_on_failure(max_retries=3, delay=2)
+    def mark_new_contacts_as_old(self):
+        """
+        Mark all contacts with status 'NEW' as 'OLD' in the NEW CONTACTS sheet.
+        This should be called at the end of each successful run to prevent
+        re-notifying about contacts that have already been seen.
+        """
+        try:
+            # Get NEW CONTACTS sheet
+            try:
+                contacts_sheet = self.spreadsheet.worksheet('NEW CONTACTS')
+            except gspread.WorksheetNotFound:
+                self.logger.debug("NEW CONTACTS sheet doesn't exist yet - nothing to mark as old")
+                return
+
+            # Get all rows
+            all_values = contacts_sheet.get_all_values()
+            if len(all_values) <= 1:
+                self.logger.debug("NEW CONTACTS sheet is empty - nothing to mark as old")
+                return
+
+            # Find Status column (should be column K, index 10)
+            headers = all_values[0]
+            try:
+                status_col_idx = headers.index('Status')
+            except ValueError:
+                self.logger.error("Status column not found in NEW CONTACTS sheet")
+                return
+
+            # Find all rows with 'NEW' status and prepare batch update
+            updates = []
+            marked_count = 0
+
+            for row_idx, row in enumerate(all_values[1:], start=2):  # Start at row 2 (skip header)
+                if len(row) > status_col_idx and row[status_col_idx] == 'NEW':
+                    # Convert column index to letter (A=0, B=1, ... K=10)
+                    col_letter = chr(ord('A') + status_col_idx)
+                    cell = f"{col_letter}{row_idx}"
+                    updates.append({
+                        'range': cell,
+                        'values': [['OLD']]
+                    })
+                    marked_count += 1
+
+            # Batch update all NEW -> OLD changes
+            if updates:
+                contacts_sheet.batch_update(updates)
+                self.logger.info(f"✓ Marked {marked_count} contacts as OLD in NEW CONTACTS sheet")
+            else:
+                self.logger.debug("No NEW contacts to mark as OLD")
+
+        except Exception as e:
+            self.logger.error(f"Failed to mark contacts as OLD: {e}")
+
+    @retry_on_failure(max_retries=3, delay=2)
+    def get_contacts_from_new_contacts_sheet(
+        self,
+        university_name: str = None,
+        status: str = None,
+        limit: int = 50,
+        offset: int = 0
+    ) -> Dict[str, Any]:
+        """
+        Retrieve contacts from NEW CONTACTS sheet with filtering and pagination
+
+        Args:
+            university_name: Filter by university (optional)
+            status: Filter by 'NEW' or 'OLD' (optional)
+            limit: Max results to return
+            offset: Pagination offset
+
+        Returns:
+            {
+                'total': int,
+                'returned': int,
+                'contacts': [
+                    {
+                        'date_added': str,
+                        'university': str,
+                        'name': str,
+                        'title': str,
+                        'email': str,
+                        'profile_url': str,
+                        'department': str,
+                        'phone': str,
+                        'research_interests': str,
+                        'faculty_id': str,
+                        'status': str,
+                        'notes': str
+                    }
+                ]
+            }
+        """
+        try:
+            # Get NEW CONTACTS sheet
+            try:
+                contacts_sheet = self.spreadsheet.worksheet('NEW CONTACTS')
+            except gspread.WorksheetNotFound:
+                return {'total': 0, 'returned': 0, 'contacts': []}
+
+            # Get all records
+            all_records = contacts_sheet.get_all_records()
+
+            # Filter by university_name if provided
+            if university_name:
+                all_records = [
+                    r for r in all_records
+                    if r.get('University', '').strip() == university_name.strip()
+                ]
+
+            # Filter by status if provided
+            if status:
+                all_records = [
+                    r for r in all_records
+                    if r.get('Status', '').strip().upper() == status.strip().upper()
+                ]
+
+            total = len(all_records)
+
+            # Apply pagination
+            paginated_records = all_records[offset:offset + limit]
+
+            # Format contacts
+            contacts = []
+            for record in paginated_records:
+                contact = {
+                    'date_added': record.get('Date Added', ''),
+                    'university': record.get('University', ''),
+                    'name': record.get('Name', ''),
+                    'title': record.get('Title', ''),
+                    'email': record.get('Email', ''),
+                    'profile_url': record.get('Profile URL', ''),
+                    'department': record.get('Department', ''),
+                    'phone': record.get('Phone', ''),
+                    'research_interests': record.get('Research Interests', ''),
+                    'faculty_id': record.get('Faculty ID', ''),
+                    'status': record.get('Status', ''),
+                    'notes': record.get('Notes', '')
+                }
+                contacts.append(contact)
+
+            return {
+                'total': total,
+                'returned': len(contacts),
+                'contacts': contacts
+            }
+
+        except Exception as e:
+            self.logger.error(f"Failed to get contacts from NEW CONTACTS sheet: {e}")
+            return {'total': 0, 'returned': 0, 'contacts': []}
+
+    @retry_on_failure(max_retries=3, delay=2)
+    def get_contact_counts_by_university(self) -> Dict[str, Dict[str, int]]:
+        """
+        Get NEW and OLD contact counts for each university
+
+        Returns:
+            {
+                'University of Miami - Microbiology': {'new': 12, 'old': 45},
+                'Stanford University - Biology': {'new': 5, 'old': 120},
+                ...
+            }
+        """
+        try:
+            # Get NEW CONTACTS sheet
+            try:
+                contacts_sheet = self.spreadsheet.worksheet('NEW CONTACTS')
+            except gspread.WorksheetNotFound:
+                return {}
+
+            # Get all records
+            all_records = contacts_sheet.get_all_records()
+
+            # Count by university and status
+            counts = {}
+            for record in all_records:
+                university = record.get('University', '').strip()
+                status = record.get('Status', '').strip().upper()
+
+                if not university:
+                    continue
+
+                if university not in counts:
+                    counts[university] = {'new': 0, 'old': 0}
+
+                if status == 'NEW':
+                    counts[university]['new'] += 1
+                elif status == 'OLD':
+                    counts[university]['old'] += 1
+
+            return counts
+
+        except Exception as e:
+            self.logger.error(f"Failed to get contact counts by university: {e}")
+            return {}
+
+    @retry_on_failure(max_retries=3, delay=2)
+    def get_grouped_universities(self) -> Dict[str, Any]:
+        """
+        Get universities grouped by parent institution with contact counts
+
+        Returns:
+            {
+                'University of Miami': {
+                    'directories': [
+                        {
+                            'university_id': 'miami_microbiology',
+                            'university_name': 'University of Miami - Microbiology',
+                            'department': 'Microbiology',
+                            'url': 'https://...',
+                            'enabled': True,
+                            'last_status': 'SUCCESS',
+                            'contacts': {'new': 12, 'old': 45}
+                        }
+                    ],
+                    'total_new': 45,
+                    'total_old': 234
+                }
+            }
+        """
+        try:
+            # Get universities from CONFIG
+            universities = self.get_universities_config()
+
+            # Get contact counts
+            contact_counts = self.get_contact_counts_by_university()
+
+            # Group directories by parent institution
+            grouped = {}
+
+            for uni in universities:
+                university_id = uni.get('university_id', '')
+                university_name = uni.get('university_name', '')
+                url = uni.get('url', '')
+                enabled = uni.get('enabled', '').upper() == 'TRUE'
+                last_status = uni.get('last_status', '')
+
+                # Parse parent institution from university_name
+                # Format: "University of Miami - Microbiology" -> parent: "University of Miami"
+                if ' - ' in university_name:
+                    parent, department = university_name.split(' - ', 1)
+                else:
+                    # If no separator, use whole name as parent and empty department
+                    parent = university_name
+                    department = ''
+
+                parent = parent.strip()
+                department = department.strip()
+
+                # Get contact counts for this university
+                uni_contacts = contact_counts.get(university_name, {'new': 0, 'old': 0})
+
+                # Create directory entry
+                directory = {
+                    'university_id': university_id,
+                    'university_name': university_name,
+                    'department': department or university_name,
+                    'url': url,
+                    'enabled': enabled,
+                    'last_status': last_status,
+                    'contacts': uni_contacts
+                }
+
+                # Add to grouped structure
+                if parent not in grouped:
+                    grouped[parent] = {
+                        'directories': [],
+                        'total_new': 0,
+                        'total_old': 0
+                    }
+
+                grouped[parent]['directories'].append(directory)
+                grouped[parent]['total_new'] += uni_contacts['new']
+                grouped[parent]['total_old'] += uni_contacts['old']
+
+            return grouped
+
+        except Exception as e:
+            self.logger.error(f"Failed to get grouped universities: {e}")
+            return {}
 
     @retry_on_failure(max_retries=3, delay=2)
     def update_system_status(

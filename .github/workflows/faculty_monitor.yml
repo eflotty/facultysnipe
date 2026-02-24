@@ -98,12 +98,16 @@ jobs:
           # Extract error from logs
           ERROR_MSG=$(tail -20 run.log 2>/dev/null | grep -i "error" | head -5 | tr '\n' ' ' || echo "Unknown error - check logs")
 
+          # Use default execution time if not set
+          EXEC_TIME="${{ steps.scrape.outputs.execution_time }}"
+          EXEC_TIME=${EXEC_TIME:-0}
+
           python scripts/send_run_summary.py \
             --status failure \
             --universities ${{ steps.stats.outputs.universities }} \
             --new-faculty ${{ steps.stats.outputs.new_faculty }} \
             --changed-faculty ${{ steps.stats.outputs.changed_faculty }} \
-            --execution-time ${{ steps.scrape.outputs.execution_time }} \
+            --execution-time "$EXEC_TIME" \
             --errors "$ERROR_MSG"
 
       - name: Upload logs

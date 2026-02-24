@@ -85,6 +85,11 @@ class FacultyMonitor:
 
             self.stats['total_universities'] = len(universities)
 
+            # Mark previous run's NEW contacts as OLD BEFORE starting this run
+            # This ensures only contacts from THIS run will show as NEW
+            self.logger.info("Marking previous contacts as OLD...")
+            self.sheets.mark_new_contacts_as_old()
+
             # Auto-detect parallel mode if not specified
             if parallel is None:
                 # Use parallel automatically if 4+ universities
