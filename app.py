@@ -280,6 +280,61 @@ def debug_university_names():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@app.route('/api/contacts/search', methods=['GET'])
+def search_contacts():
+    """Search contacts across all universities"""
+    try:
+        query = request.args.get('q', '').strip()
+        status = request.args.get('status', 'NEW')  # Default to NEW contacts only
+        limit = int(request.args.get('limit', 100))
+
+        if not query or len(query) < 2:
+            return jsonify({
+                'success': False,
+                'error': 'Search query must be at least 2 characters'
+            }), 400
+
+        sheets = get_sheets()
+
+        # Get all contacts matching status
+        all_contacts = sheets.get_contacts_from_new_contacts_sheet(
+            status=status,
+            limit=10000  # Get all to search through
+        )
+
+        # Filter contacts by search query
+        query_lower = query.lower()
+        matching_contacts = []
+
+        for contact in all_contacts['contacts']:
+            # Search in multiple fields
+            searchable_text = ' '.join([
+                contact.get('name', ''),
+                contact.get('email', ''),
+                contact.get('title', ''),
+                contact.get('university', ''),
+                contact.get('department', ''),
+                contact.get('research_interests', '')
+            ]).lower()
+
+            if query_lower in searchable_text:
+                matching_contacts.append(contact)
+
+            if len(matching_contacts) >= limit:
+                break
+
+        return jsonify({
+            'success': True,
+            'query': query,
+            'total': len(matching_contacts),
+            'returned': len(matching_contacts),
+            'contacts': matching_contacts
+        })
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5001))
     debug = os.environ.get('FLASK_ENV') != 'production'

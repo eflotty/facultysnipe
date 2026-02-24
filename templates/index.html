@@ -477,6 +477,18 @@
             opacity: 0.3;
             cursor: not-allowed;
         }
+
+        /* Search Input Styles */
+        #contact-search-input:focus {
+            outline: none;
+            border-color: #667eea;
+            background: rgba(255, 255, 255, 0.12);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        #contact-search-input::placeholder {
+            color: #6b7280;
+        }
     </style>
 </head>
 <body>
@@ -599,6 +611,34 @@
 
         <!-- Browse Tab -->
         <div id="tab-browse" class="tab-content">
+            <!-- Search Bar -->
+            <div class="card" style="margin-bottom: 20px;">
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <input
+                        type="text"
+                        id="contact-search-input"
+                        placeholder="Search contacts by name, email, title, or research interests..."
+                        style="flex: 1; padding: 14px 18px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px; color: #ffffff; font-size: 15px;"
+                        onkeypress="if(event.key === 'Enter') searchContacts()"
+                    >
+                    <button
+                        onclick="searchContacts()"
+                        class="btn"
+                        style="width: auto; padding: 14px 30px; margin: 0;"
+                    >
+                        Search
+                    </button>
+                    <button
+                        id="clear-search-btn"
+                        onclick="clearSearch()"
+                        class="btn"
+                        style="width: auto; padding: 14px 30px; margin: 0; background: rgba(255, 255, 255, 0.1); display: none;"
+                    >
+                        Clear
+                    </button>
+                </div>
+            </div>
+
             <!-- Breadcrumb Navigation -->
             <div id="breadcrumb" class="card" style="display: none;">
                 <!-- Dynamic breadcrumb -->
@@ -606,7 +646,7 @@
 
             <!-- Main Browse Container -->
             <div id="browse-container" class="card">
-                <div class="card-title">Browse Contacts</div>
+                <div class="card-title" id="browse-title">Browse Contacts</div>
                 <div id="browse-content">
                     <!-- Dynamic content loads here -->
                 </div>
@@ -775,12 +815,13 @@
 
         // Browse State Management
         const browseState = {
-            view: 'universities',  // 'universities' | 'directories' | 'contacts'
+            view: 'universities',  // 'universities' | 'directories' | 'contacts' | 'search'
             selectedParent: null,
             selectedDirectory: null,
             currentPage: 0,
             pageSize: 50,
-            cachedGroups: null
+            cachedGroups: null,
+            searchQuery: null
         };
 
         // Tab Switching
@@ -1041,6 +1082,128 @@
 
             breadcrumb.innerHTML = html;
             breadcrumb.style.display = 'block';
+        }
+
+        // Search Contacts
+        async function searchContacts() {
+            const searchInput = document.getElementById('contact-search-input');
+            const query = searchInput.value.trim();
+
+            if (!query || query.length < 2) {
+                alert('Please enter at least 2 characters to search');
+                return;
+            }
+
+            browseState.view = 'search';
+            browseState.searchQuery = query;
+
+            const container = document.getElementById('browse-content');
+            container.innerHTML = '<div style="text-align: center; padding: 40px;"><div class="spinner"></div><span class="loading-text">Searching contacts...</span></div>';
+
+            // Update title and show clear button
+            document.getElementById('browse-title').textContent = `Search Results`;
+            document.getElementById('clear-search-btn').style.display = 'block';
+
+            try {
+                const response = await fetch(`/api/contacts/search?q=${encodeURIComponent(query)}&status=NEW`);
+                const data = await response.json();
+
+                if (data.success) {
+                    renderSearchResults(data.contacts, data.query);
+                } else {
+                    container.innerHTML = `<div style="text-align: center; padding: 40px; color: #f87171;">Error: ${data.error || 'Search failed'}</div>`;
+                }
+            } catch (error) {
+                container.innerHTML = '<div style="text-align: center; padding: 40px; color: #f87171;">Failed to search contacts</div>';
+            }
+        }
+
+        // Render Search Results
+        function renderSearchResults(contacts, query) {
+            const container = document.getElementById('browse-content');
+            document.getElementById('breadcrumb').style.display = 'none';
+            document.getElementById('pagination-controls').style.display = 'none';
+
+            if (contacts.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: #9ca3af;">
+                        No results found for "${escapeHtml(query)}"
+                    </div>
+                `;
+                return;
+            }
+
+            const resultsHeader = `
+                <div style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid rgba(255, 255, 255, 0.1);">
+                    <div style="font-size: 14px; color: #9ca3af;">
+                        Found <strong style="color: #e0e0e0;">${contacts.length}</strong> contact${contacts.length !== 1 ? 's' : ''} matching "${escapeHtml(query)}"
+                    </div>
+                </div>
+            `;
+
+            const html = contacts.map(contact => `
+                <div class="contact-card">
+                    <div class="contact-header">
+                        <div>
+                            <div class="contact-name">${escapeHtml(contact.name)}</div>
+                            <div style="font-size: 14px; color: #9ca3af; font-style: italic; margin-top: 4px;">
+                                ${escapeHtml(contact.title || 'Faculty Member')}
+                            </div>
+                            <div style="font-size: 13px; color: #667eea; margin-top: 4px;">
+                                ${escapeHtml(contact.university)}
+                            </div>
+                        </div>
+                        <span class="${contact.status === 'NEW' ? 'new-badge' : 'old-badge'}">
+                            ${contact.status}
+                        </span>
+                    </div>
+                    ${contact.email ? `
+                        <div class="contact-info-row">
+                            <span>📧</span>
+                            <a href="mailto:${escapeHtml(contact.email)}" style="color: #667eea;">${escapeHtml(contact.email)}</a>
+                        </div>
+                    ` : ''}
+                    ${contact.phone ? `
+                        <div class="contact-info-row">
+                            <span>📞</span>
+                            <span>${escapeHtml(contact.phone)}</span>
+                        </div>
+                    ` : ''}
+                    ${contact.department ? `
+                        <div class="contact-info-row">
+                            <span>🏛️</span>
+                            <span>${escapeHtml(contact.department)}</span>
+                        </div>
+                    ` : ''}
+                    ${contact.profile_url ? `
+                        <div class="contact-info-row">
+                            <span>🔗</span>
+                            <a href="${escapeHtml(contact.profile_url)}" target="_blank" style="color: #667eea;">View Profile</a>
+                        </div>
+                    ` : ''}
+                    ${contact.research_interests ? `
+                        <div class="contact-info-row">
+                            <span>🔬</span>
+                            <span>${escapeHtml(contact.research_interests)}</span>
+                        </div>
+                    ` : ''}
+                    <div style="font-size: 12px; color: #6b7280; margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255, 255, 255, 0.1);">
+                        Added: ${escapeHtml(contact.date_added)}
+                    </div>
+                </div>
+            `).join('');
+
+            container.innerHTML = resultsHeader + html;
+        }
+
+        // Clear Search
+        function clearSearch() {
+            browseState.view = 'universities';
+            browseState.searchQuery = null;
+            document.getElementById('contact-search-input').value = '';
+            document.getElementById('clear-search-btn').style.display = 'none';
+            document.getElementById('browse-title').textContent = 'Browse Contacts';
+            loadUniversityGroups();
         }
 
         // Escape HTML helper function
