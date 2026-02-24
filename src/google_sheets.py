@@ -862,6 +862,9 @@ class GoogleSheetsManager:
                     if r.get('Status', '').strip().upper() == status.strip().upper()
                 ]
 
+            # Sort by Date Added in descending order (newest first)
+            all_records.sort(key=lambda x: x.get('Date Added', ''), reverse=True)
+
             total = len(all_records)
 
             # Apply pagination
