@@ -945,6 +945,9 @@ class GoogleSheetsManager:
     def get_grouped_universities(self) -> Dict[str, Any]:
         """
         Get universities grouped by parent institution with contact counts
+        Groups universities by domain to handle variations like:
+        - "Miami University" and "University of Miami" from miami.edu -> same group
+        - "Miami University" from miamioh.edu -> different group
 
         Returns:
             {
@@ -966,13 +969,74 @@ class GoogleSheetsManager:
             }
         """
         try:
+            from urllib.parse import urlparse
+
             # Get universities from CONFIG
             universities = self.get_universities_config()
 
             # Get contact counts
             contact_counts = self.get_contact_counts_by_university()
 
-            # Group directories by parent institution
+            # Helper function to extract base domain (e.g., miami.edu from biology.miami.edu)
+            def extract_base_domain(url):
+                """Extract base domain from URL (e.g., miami.edu from biology.miami.edu)"""
+                try:
+                    parsed_url = urlparse(url)
+                    hostname = parsed_url.netloc.lower()
+                    # Remove 'www.' prefix if present
+                    if hostname.startswith('www.'):
+                        hostname = hostname[4:]
+
+                    # Split by dots and get last 2 parts (domain.tld)
+                    parts = hostname.split('.')
+                    if len(parts) >= 2:
+                        # Handle special cases like .edu.au, .ac.uk
+                        if len(parts) >= 3 and parts[-2] in ['edu', 'ac', 'co']:
+                            return '.'.join(parts[-3:])
+                        else:
+                            return '.'.join(parts[-2:])
+                    return hostname
+                except Exception:
+                    return None
+
+            # First pass: Group by domain to identify which universities should be combined
+            domain_to_parents = {}
+
+            for uni in universities:
+                university_name = uni.get('university_name', '')
+                url = uni.get('url', '')
+
+                # Extract base domain from URL
+                domain = extract_base_domain(url)
+                if not domain:
+                    self.logger.warning(f"Failed to parse domain from URL '{url}'")
+                    continue
+
+                # Extract parent institution name
+                if ' - ' in university_name:
+                    parent = university_name.split(' - ', 1)[0].strip()
+                else:
+                    parent = university_name.strip()
+
+                # Track which parent names are used for each domain
+                if domain not in domain_to_parents:
+                    domain_to_parents[domain] = []
+                if parent not in domain_to_parents[domain]:
+                    domain_to_parents[domain].append(parent)
+
+            # Second pass: Choose canonical parent name for each domain
+            # Use the longest/most complete name as canonical
+            domain_to_canonical = {}
+            for domain, parents in domain_to_parents.items():
+                if len(parents) == 1:
+                    domain_to_canonical[domain] = parents[0]
+                else:
+                    # Pick the longest name as canonical (usually more complete)
+                    # e.g., "University of Miami" is more complete than "Miami"
+                    domain_to_canonical[domain] = max(parents, key=len)
+                    self.logger.info(f"Combining variants for {domain}: {parents} -> '{domain_to_canonical[domain]}'")
+
+            # Third pass: Group directories using canonical parent names
             grouped = {}
 
             for uni in universities:
@@ -982,17 +1046,24 @@ class GoogleSheetsManager:
                 enabled = uni.get('enabled', '').upper() == 'TRUE'
                 last_status = uni.get('last_status', '')
 
-                # Parse parent institution from university_name
-                # Format: "University of Miami - Microbiology" -> parent: "University of Miami"
-                if ' - ' in university_name:
-                    parent, department = university_name.split(' - ', 1)
-                else:
-                    # If no separator, use whole name as parent and empty department
-                    parent = university_name
-                    department = ''
+                # Extract base domain
+                domain = extract_base_domain(url)
 
-                parent = parent.strip()
-                department = department.strip()
+                # Use canonical parent name for this domain
+                if domain and domain in domain_to_canonical:
+                    parent = domain_to_canonical[domain]
+                else:
+                    # Fallback if domain lookup fails
+                    if ' - ' in university_name:
+                        parent = university_name.split(' - ', 1)[0].strip()
+                    else:
+                        parent = university_name.strip()
+
+                # Extract department
+                if ' - ' in university_name:
+                    department = university_name.split(' - ', 1)[1].strip()
+                else:
+                    department = ''
 
                 # Get contact counts for this university
                 uni_contacts = contact_counts.get(university_name, {'new': 0, 'old': 0})

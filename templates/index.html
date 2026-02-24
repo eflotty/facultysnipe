@@ -489,10 +489,10 @@
         <!-- Tab Navigation -->
         <div class="tab-nav">
             <button class="tab-btn active" onclick="switchTab('dashboard')">
-                📊 Dashboard
+                Dashboard
             </button>
             <button class="tab-btn" onclick="switchTab('browse')">
-                👥 Browse Contacts
+                Browse Contacts
             </button>
         </div>
 
@@ -503,7 +503,7 @@
         <div id="system-status-banner" class="card" style="background: rgba(102, 126, 234, 0.1); border: 1px solid rgba(102, 126, 234, 0.3); margin-bottom: 30px; padding: 20px;">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
                 <div>
-                    <div style="font-size: 14px; color: #9ca3af; margin-bottom: 5px;">Last Run</div>
+                    <div style="font-size: 14px; color: #9ca3af; margin-bottom: 5px;">Most Recent Run</div>
                     <div id="last-run-status" style="font-size: 16px; font-weight: 600;">
                         <span class="spinner"></span> Loading...
                     </div>
@@ -511,20 +511,8 @@
                 <div>
                     <div style="font-size: 14px; color: #9ca3af; margin-bottom: 5px;">Next Run</div>
                     <div id="next-run-time" style="font-size: 16px; font-weight: 600;">
-                        Monday or Thursday at 3:00 AM UTC
+                        Monday or Thursday at 8:00 PM UTC
                     </div>
-                </div>
-                <div>
-                    <div style="font-size: 14px; color: #9ca3af; margin-bottom: 5px;">Success Rate</div>
-                    <div id="success-rate" style="font-size: 16px; font-weight: 600;">
-                        --
-                    </div>
-                </div>
-            </div>
-            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255, 255, 255, 0.1);">
-                <div style="font-size: 12px; color: #9ca3af; margin-bottom: 8px;">Recent Runs</div>
-                <div id="recent-runs" style="font-size: 18px; letter-spacing: 3px;">
-                    --
                 </div>
             </div>
         </div>
@@ -746,23 +734,14 @@
                     const stats = data.stats;
                     const recentRuns = data.recent_runs;
 
-                    // Update success rate
-                    document.getElementById('success-rate').textContent = `${stats.success_rate}% (${stats.successful_runs}/${stats.total_runs})`;
-
-                    // Update recent runs with icons
+                    // Update most recent run status
                     if (recentRuns && recentRuns.length > 0) {
-                        const runIcons = recentRuns.reverse().map(run => {
-                            return run.status === 'SUCCESS' ? '✅' : '❌';
-                        }).join(' ');
-                        document.getElementById('recent-runs').textContent = runIcons;
-
-                        // Update last run status
-                        const lastRun = recentRuns[0];
-                        const statusIcon = lastRun.status === 'SUCCESS' ? '✅' : '❌';
+                        const lastRun = recentRuns[recentRuns.length - 1]; // Get the most recent run
+                        const statusText = lastRun.status === 'SUCCESS' ? 'Successful' : 'Failed';
                         const statusColor = lastRun.status === 'SUCCESS' ? '#34d399' : '#f87171';
 
                         document.getElementById('last-run-status').innerHTML = `
-                            <span style="color: ${statusColor}">${statusIcon} ${lastRun.status}</span>
+                            <span style="color: ${statusColor}">${statusText}</span>
                             <div style="font-size: 12px; color: #9ca3af; font-weight: 400; margin-top: 3px;">
                                 ${lastRun.timestamp} UTC
                             </div>
@@ -771,7 +750,6 @@
                             </div>` : ''}
                         `;
                     } else {
-                        document.getElementById('recent-runs').textContent = 'No runs yet';
                         document.getElementById('last-run-status').textContent = 'No runs yet';
                     }
 
@@ -792,7 +770,6 @@
             } catch (error) {
                 console.error('Failed to load system status:', error);
                 document.getElementById('last-run-status').textContent = 'Status unavailable';
-                document.getElementById('recent-runs').textContent = '--';
             }
         }
 
@@ -1045,7 +1022,7 @@
             }
 
             html = '<div class="breadcrumb">';
-            html += '<span class="breadcrumb-item" onclick="loadUniversityGroups()">🏠 All Universities</span>';
+            html += '<span class="breadcrumb-item" onclick="loadUniversityGroups()">All Universities</span>';
 
             if (browseState.selectedParent) {
                 html += '<span class="breadcrumb-separator">›</span>';
