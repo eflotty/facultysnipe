@@ -34,3 +34,4 @@ htmlcov/
 
 # Node (if any)
 node_modules/
+credentials_base64.txt
