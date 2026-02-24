@@ -256,6 +256,30 @@ def get_contacts_summary():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@app.route('/api/debug/university-names', methods=['GET'])
+def debug_university_names():
+    """Debug endpoint to check university names in CONFIG vs NEW CONTACTS"""
+    try:
+        sheets = get_sheets()
+
+        # Get universities from CONFIG
+        universities = sheets.get_universities_config()
+        config_names = [u.get('university_name', '') for u in universities]
+
+        # Get contact counts (shows what's in NEW CONTACTS)
+        counts = sheets.get_contact_counts_by_university()
+        contacts_names = list(counts.keys())
+
+        return jsonify({
+            'success': True,
+            'config_sheet_names': config_names,
+            'new_contacts_sheet_names': contacts_names,
+            'counts': counts
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5001))
     debug = os.environ.get('FLASK_ENV') != 'production'

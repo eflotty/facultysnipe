@@ -231,8 +231,11 @@ class FacultyMonitor:
 
             # Add new faculty to centralized NEW CONTACTS sheet (thread-safe)
             if new_faculty:
+                # Enhance university name with department from URL if not already present
+                enhanced_name = self._enhance_university_name(university_name, url)
+
                 with self.new_contacts_lock:
-                    self.sheets.add_to_new_contacts(university_name, new_faculty)
+                    self.sheets.add_to_new_contacts(enhanced_name, new_faculty)
 
             # Send notifications ONLY if NEW faculty found (not just changes)
             if new_faculty and sales_rep_email:
@@ -270,6 +273,64 @@ class FacultyMonitor:
                 self.sheets.update_run_status(university_id, 'FAILED')
             except Exception:
                 pass  # Don't fail if status update fails
+
+    def _enhance_university_name(self, university_name: str, url: str) -> str:
+        """
+        Enhance university name with department from URL if not already present
+
+        Args:
+            university_name: Original university name from CONFIG
+            url: Faculty directory URL
+
+        Returns:
+            Enhanced name with department (e.g., "Miami University - Cell Biology")
+        """
+        from urllib.parse import urlparse
+
+        # If name already contains " - ", assume it has department
+        if ' - ' in university_name:
+            return university_name
+
+        # Try to extract department from URL
+        try:
+            parsed_url = urlparse(url)
+            path = parsed_url.path.lower()
+
+            # Common patterns for department URLs
+            department = None
+
+            if '/departments/' in path:
+                dept = path.split('/departments/')[1].split('/')[0]
+            elif '/department/' in path:
+                dept = path.split('/department/')[1].split('/')[0]
+            elif '/academics/departments/' in path:
+                dept = path.split('/academics/departments/')[1].split('/')[0]
+            else:
+                # Try to extract from subdomain
+                hostname = parsed_url.netloc.lower()
+                if hostname.startswith('www.'):
+                    hostname = hostname[4:]
+                parts = hostname.split('.')
+                if len(parts) > 2:
+                    dept = parts[0]
+                else:
+                    return university_name  # Can't extract department
+
+            # Clean up and format the department name
+            # 'cell-biology' -> 'Cell Biology'
+            dept = dept.replace('-', ' ').replace('_', ' ')
+            department = ' '.join(word.capitalize() for word in dept.split())
+
+            # Append department to university name
+            if department:
+                enhanced = f"{university_name} - {department}"
+                self.logger.info(f"Enhanced name: '{university_name}' -> '{enhanced}'")
+                return enhanced
+
+        except Exception as e:
+            self.logger.warning(f"Failed to extract department from URL '{url}': {e}")
+
+        return university_name
 
     def _print_summary(self):
         """Print execution summary"""

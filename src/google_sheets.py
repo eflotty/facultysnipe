@@ -999,6 +999,47 @@ class GoogleSheetsManager:
                 except Exception:
                     return None
 
+            # Helper function to extract department name from URL
+            def extract_department_from_url(url):
+                """Extract department name from URL path (e.g., 'cell-biology' -> 'Cell Biology')"""
+                try:
+                    parsed_url = urlparse(url)
+                    path = parsed_url.path.lower()
+
+                    # Common patterns for department URLs
+                    # /departments/cell-biology/
+                    # /department/biochemistry/
+                    # /academics/departments/chemistry/
+
+                    # Look for common department indicators
+                    if '/departments/' in path:
+                        dept = path.split('/departments/')[1].split('/')[0]
+                    elif '/department/' in path:
+                        dept = path.split('/department/')[1].split('/')[0]
+                    elif '/academics/departments/' in path:
+                        dept = path.split('/academics/departments/')[1].split('/')[0]
+                    else:
+                        # Try to extract from subdomain
+                        hostname = parsed_url.netloc.lower()
+                        if hostname.startswith('www.'):
+                            hostname = hostname[4:]
+                        parts = hostname.split('.')
+                        if len(parts) > 2:
+                            dept = parts[0]
+                        else:
+                            return None
+
+                    # Clean up and format the department name
+                    # 'cell-biology' -> 'Cell Biology'
+                    # 'biochemistry-and-molecular-biology' -> 'Biochemistry and Molecular Biology'
+                    dept = dept.replace('-', ' ').replace('_', ' ')
+                    dept = ' '.join(word.capitalize() for word in dept.split())
+
+                    return dept if dept else None
+
+                except Exception:
+                    return None
+
             # First pass: Group by domain to identify which universities should be combined
             domain_to_parents = {}
 
@@ -1063,10 +1104,15 @@ class GoogleSheetsManager:
                 if ' - ' in university_name:
                     department = university_name.split(' - ', 1)[1].strip()
                 else:
-                    department = ''
+                    # Try to extract from URL if not in name
+                    department = extract_department_from_url(url) or ''
 
                 # Get contact counts for this university
                 uni_contacts = contact_counts.get(university_name, {'new': 0, 'old': 0})
+
+                # Log if all directories have the same count (debugging)
+                if uni_contacts['new'] > 0:
+                    self.logger.debug(f"Counts for '{university_name}': {uni_contacts}")
 
                 # Create directory entry
                 directory = {

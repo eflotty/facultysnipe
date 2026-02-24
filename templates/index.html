@@ -830,6 +830,7 @@
 
             if (Object.keys(groups).length === 0) {
                 container.innerHTML = '<div style="text-align: center; padding: 40px; color: #9ca3af;">No universities found</div>';
+                document.getElementById('pagination-controls').style.display = 'none';
                 return;
             }
 
@@ -853,6 +854,7 @@
 
             container.innerHTML = html;
             document.getElementById('breadcrumb').style.display = 'none';
+            document.getElementById('pagination-controls').style.display = 'none';
         }
 
         // Show Directories for Selected University (Level 2)
