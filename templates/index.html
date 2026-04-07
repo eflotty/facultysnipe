@@ -436,6 +436,48 @@
             color: #9ca3af;
         }
 
+        .slim-contact-card {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 16px 20px;
+            margin: 10px 0;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .slim-contact-card:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(102, 126, 234, 0.5);
+            transform: translateX(4px);
+        }
+
+        .slim-contact-info {
+            flex: 1;
+        }
+
+        .slim-contact-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: #e0e0e0;
+            margin-bottom: 4px;
+        }
+
+        .slim-contact-meta {
+            font-size: 13px;
+            color: #9ca3af;
+        }
+
+        .slim-contact-date {
+            font-size: 13px;
+            color: #667eea;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
         .new-badge {
             background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
             color: white;
@@ -529,6 +571,9 @@
             </button>
             <button class="tab-btn" onclick="switchTab('browse')">
                 Browse Contacts
+            </button>
+            <button class="tab-btn" onclick="switchTab('recent')">
+                Most Recent New
             </button>
         </div>
 
@@ -698,6 +743,35 @@
             <!-- Pagination Controls -->
             <div id="pagination-controls" style="display: none;">
                 <!-- Previous/Next buttons -->
+            </div>
+        </div>
+
+        <!-- Most Recent New Tab -->
+        <div id="tab-recent" class="tab-content">
+            <div class="card">
+                <div class="card-title">Most Recent New Contacts</div>
+                <div class="card-subtitle">Newest faculty discoveries across all directories</div>
+
+                <!-- Time Filter for Recent Tab -->
+                <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; align-items: center; margin: 20px 0;">
+                    <span style="color: #9ca3af; margin-right: 10px; font-size: 14px;">Show:</span>
+                    <button onclick="applyRecentFilter(30)" class="time-filter-btn" data-filter="30">
+                        Last 30 Days
+                    </button>
+                    <button onclick="applyRecentFilter(60)" class="time-filter-btn" data-filter="60">
+                        Last 60 Days
+                    </button>
+                    <button onclick="applyRecentFilter(90)" class="time-filter-btn active" data-filter="90">
+                        Last 90 Days
+                    </button>
+                    <button onclick="applyRecentFilter('all')" class="time-filter-btn" data-filter="all">
+                        All Time
+                    </button>
+                </div>
+
+                <div id="recent-contacts-container">
+                    <!-- Dynamic content loads here -->
+                </div>
             </div>
         </div>
 
@@ -897,6 +971,11 @@
             // Load browse data if switching to browse tab
             if (tabName === 'browse' && !browseState.cachedGroups) {
                 loadUniversityGroups();
+            }
+
+            // Load recent contacts if switching to recent tab
+            if (tabName === 'recent') {
+                loadRecentContacts(90); // Default to 90 days
             }
         }
 
@@ -1292,6 +1371,80 @@
             } else if (browseState.view === 'search') {
                 searchContacts();
             }
+        }
+
+        // Load Recent Contacts (Most Recent New tab)
+        async function loadRecentContacts(daysBack = 90) {
+            const container = document.getElementById('recent-contacts-container');
+            container.innerHTML = '<div style="text-align: center; padding: 40px;"><div class="spinner"></div><span class="loading-text">Loading recent contacts...</span></div>';
+
+            try {
+                // Fetch only NEW contacts across all universities
+                let apiUrl = `/api/contacts?status=NEW&limit=100`;
+
+                if (daysBack !== 'all') {
+                    apiUrl += `&days_back=${daysBack}`;
+                }
+
+                const response = await fetch(apiUrl);
+                const data = await response.json();
+
+                if (data.success) {
+                    renderRecentContacts(data.contacts);
+                } else {
+                    container.innerHTML = '<div style="text-align: center; padding: 40px; color: #f87171;">Error loading contacts</div>';
+                }
+            } catch (error) {
+                container.innerHTML = '<div style="text-align: center; padding: 40px; color: #f87171;">Failed to load contacts</div>';
+            }
+        }
+
+        // Render Recent Contacts (slim view)
+        function renderRecentContacts(contacts) {
+            const container = document.getElementById('recent-contacts-container');
+
+            if (contacts.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 40px; color: #9ca3af;">No new contacts found</div>';
+                return;
+            }
+
+            const html = contacts.map(contact => {
+                const dateAdded = contact.date_added ? new Date(contact.date_added).toLocaleDateString() : 'N/A';
+
+                return `
+                    <div class="slim-contact-card" onclick="showContactDetails('${escapeHtml(contact.faculty_id)}')">
+                        <div class="slim-contact-info">
+                            <div class="slim-contact-name">${escapeHtml(contact.name)}</div>
+                            <div class="slim-contact-meta">
+                                ${escapeHtml(contact.university)}
+                                ${contact.department ? `• ${escapeHtml(contact.department)}` : ''}
+                            </div>
+                        </div>
+                        <div class="slim-contact-date">${dateAdded}</div>
+                    </div>
+                `;
+            }).join('');
+
+            container.innerHTML = html;
+        }
+
+        // Apply Recent Filter
+        function applyRecentFilter(daysBack) {
+            // Update active button - target buttons in the recent tab only
+            document.querySelectorAll('#tab-recent .time-filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // Reload with new filter
+            loadRecentContacts(daysBack);
+        }
+
+        // Show Contact Details (placeholder for future implementation)
+        function showContactDetails(facultyId) {
+            // For now, just log - can expand later to show modal with full details
+            console.log('Contact clicked:', facultyId);
+            // Could implement a modal here to show full contact details
         }
 
         // Extract department name from URL
