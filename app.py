@@ -213,16 +213,22 @@ def get_contacts():
     """Get contacts with filtering and pagination"""
     try:
         university_name = request.args.get('university_name')
-        status = request.args.get('status', 'NEW')
+        # Default to None (show ALL contacts: NEW first, then OLD)
+        status = request.args.get('status', None)
         limit = int(request.args.get('limit', 50))
         offset = int(request.args.get('offset', 0))
+
+        # Time filter: days_back can be 30, 60, 90, or 'all'
+        days_back_param = request.args.get('days_back', 'all')
+        days_back = None if days_back_param == 'all' else int(days_back_param)
 
         sheets = get_sheets()
         result = sheets.get_contacts_from_new_contacts_sheet(
             university_name=university_name,
             status=status,
             limit=limit,
-            offset=offset
+            offset=offset,
+            days_back=days_back
         )
 
         return jsonify({
@@ -285,8 +291,12 @@ def search_contacts():
     """Search contacts across all universities"""
     try:
         query = request.args.get('q', '').strip()
-        status = request.args.get('status', 'NEW')  # Default to NEW contacts only
+        status = request.args.get('status', None)  # Default to ALL contacts (NEW first, then OLD)
         limit = int(request.args.get('limit', 100))
+
+        # Time filter: days_back can be 30, 60, 90, or 'all'
+        days_back_param = request.args.get('days_back', 'all')
+        days_back = None if days_back_param == 'all' else int(days_back_param)
 
         if not query or len(query) < 2:
             return jsonify({
@@ -296,10 +306,11 @@ def search_contacts():
 
         sheets = get_sheets()
 
-        # Get all contacts matching status
+        # Get all contacts matching status and time filter
         all_contacts = sheets.get_contacts_from_new_contacts_sheet(
             status=status,
-            limit=10000  # Get all to search through
+            limit=10000,  # Get all to search through
+            days_back=days_back
         )
 
         # Filter contacts by search query

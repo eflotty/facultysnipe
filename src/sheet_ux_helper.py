@@ -40,6 +40,7 @@ class SheetUXHelper:
             'university_name': self._extract_university_name(url),
             'scraper_class': '',  # Always empty to use HybridScraper
             'scraper_type': self._detect_scraper_type(url),
+            'first_scrape_completed': 'FALSE',  # First scrape not yet completed
             'enabled': 'TRUE',
             'sales_rep_email': '',  # User must fill this manually
             'last_run': '',

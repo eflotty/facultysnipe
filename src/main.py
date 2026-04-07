@@ -234,11 +234,22 @@ class FacultyMonitor:
                 # Enhance university name with department from URL if not already present
                 enhanced_name = self._enhance_university_name(university_name, url)
 
+                # Check if this is the first scrape for this university
+                is_first = self.sheets.is_first_scrape(university_id)
+
                 with self.new_contacts_lock:
-                    self.sheets.add_to_new_contacts(enhanced_name, new_faculty)
+                    if is_first:
+                        # First scrape - add all contacts to baseline (marked as OLD)
+                        self.logger.info(f"First scrape for {university_name} - adding {len(new_faculty)} to baseline")
+                        self.sheets.add_to_new_contacts(enhanced_name, new_faculty, mark_as_old=True)
+                        self.sheets.mark_first_scrape_complete(university_id)
+                    else:
+                        # Normal scrape - mark new discoveries as NEW
+                        self.sheets.add_to_new_contacts(enhanced_name, new_faculty)
 
             # Send notifications ONLY if NEW faculty found (not just changes)
-            if new_faculty and sales_rep_email:
+            # Don't send notification on first scrape (baseline)
+            if new_faculty and sales_rep_email and not is_first:
                 self.logger.info(f"Sending notification to {sales_rep_email} ({len(new_faculty)} new faculty)")
                 success = self.notifier.send_new_faculty_alert(
                     recipient=sales_rep_email,
@@ -251,6 +262,8 @@ class FacultyMonitor:
                     self.logger.info("✓ Notification sent successfully")
                 else:
                     self.logger.warning("✗ Failed to send notification")
+            elif new_faculty and is_first:
+                self.logger.info(f"Skipping notification for first scrape (baseline) - {len(new_faculty)} contacts added to baseline")
 
             elif new_faculty and not sales_rep_email:
                 self.logger.warning(f"⚠ {len(new_faculty)} new faculty found but no sales_rep_email configured")

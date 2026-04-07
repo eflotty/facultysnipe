@@ -135,13 +135,101 @@ class GoogleSheetsManager:
             self._create_config_sheet()
             return []
 
+    @retry_on_failure(max_retries=3, delay=2)
+    def is_first_scrape(self, university_id: str) -> bool:
+        """
+        Check if this is the first scrape for a university
+
+        Args:
+            university_id: University identifier
+
+        Returns:
+            True if first scrape not yet completed, False otherwise
+        """
+        try:
+            config_sheet = self.spreadsheet.worksheet(CONFIG_SHEET_NAME)
+            all_values = config_sheet.get_all_values()
+
+            if not all_values or len(all_values) < 2:
+                return True  # No data yet, treat as first scrape
+
+            headers = [str(h).strip() for h in all_values[0]]
+
+            # Find column indices
+            if 'university_id' not in headers or 'first_scrape_completed' not in headers:
+                self.logger.warning("Required columns not found in CONFIG sheet")
+                return True  # Default to first scrape if column missing
+
+            id_col = headers.index('university_id')
+            fsc_col = headers.index('first_scrape_completed')
+
+            # Find row for this university
+            for row in all_values[1:]:
+                if len(row) > id_col and str(row[id_col]).strip() == university_id:
+                    # Found the university, check first_scrape_completed
+                    if len(row) > fsc_col:
+                        value = str(row[fsc_col]).strip().upper()
+                        return value != 'TRUE'  # False means completed, True means not completed
+                    else:
+                        return True  # Column exists but empty for this row
+
+            # University not found in CONFIG
+            self.logger.warning(f"University '{university_id}' not found in CONFIG sheet")
+            return True
+
+        except Exception as e:
+            self.logger.error(f"Failed to check first scrape status: {e}")
+            return True  # Default to first scrape on error
+
+    @retry_on_failure(max_retries=3, delay=2)
+    def mark_first_scrape_complete(self, university_id: str):
+        """
+        Mark university as having completed first scrape
+
+        Args:
+            university_id: University identifier
+        """
+        try:
+            config_sheet = self.spreadsheet.worksheet(CONFIG_SHEET_NAME)
+            all_values = config_sheet.get_all_values()
+
+            if not all_values or len(all_values) < 2:
+                self.logger.error("Cannot mark first scrape complete - CONFIG sheet is empty")
+                return
+
+            headers = [str(h).strip() for h in all_values[0]]
+
+            # Find column indices
+            if 'university_id' not in headers or 'first_scrape_completed' not in headers:
+                self.logger.error("Required columns not found in CONFIG sheet")
+                return
+
+            id_col = headers.index('university_id')
+            fsc_col = headers.index('first_scrape_completed')
+
+            # Find row for this university
+            for row_idx, row in enumerate(all_values[1:], start=2):
+                if len(row) > id_col and str(row[id_col]).strip() == university_id:
+                    # Found the university, update first_scrape_completed
+                    col_letter = chr(ord('A') + fsc_col)
+                    cell = f'{col_letter}{row_idx}'
+                    config_sheet.update(cell, [['TRUE']])
+                    self.logger.info(f"✓ Marked first scrape complete for '{university_id}'")
+                    return
+
+            # University not found
+            self.logger.warning(f"University '{university_id}' not found in CONFIG - cannot mark first scrape complete")
+
+        except Exception as e:
+            self.logger.error(f"Failed to mark first scrape complete: {e}")
+
     def _create_config_sheet(self):
         """Create CONFIG sheet with template headers"""
         try:
             config_sheet = self.spreadsheet.add_worksheet(
                 title=CONFIG_SHEET_NAME,
                 rows=100,
-                cols=10
+                cols=11
             )
 
             # Set headers
@@ -152,12 +240,13 @@ class GoogleSheetsManager:
                 'url',
                 'enabled',
                 'scraper_type',
+                'first_scrape_completed',
                 'sales_rep_email',
                 'last_run',
                 'last_status',
                 'notes'
             ]
-            config_sheet.update('A1:J1', [headers])
+            config_sheet.update('A1:K1', [headers])
 
             self.logger.info("Created CONFIG sheet with headers")
 
@@ -502,7 +591,7 @@ class GoogleSheetsManager:
             # Find column indices
             col_indices = {}
             for col_name in ['university_id', 'university_name', 'scraper_class', 'url',
-                            'enabled', 'scraper_type', 'sales_rep_email', 'notes']:
+                            'enabled', 'scraper_type', 'first_scrape_completed', 'sales_rep_email', 'notes']:
                 try:
                     col_indices[col_name] = headers.index(col_name)
                 except ValueError:
@@ -652,7 +741,8 @@ class GoogleSheetsManager:
     def add_to_new_contacts(
         self,
         university_name: str,
-        new_faculty: List[Faculty]
+        new_faculty: List[Faculty],
+        mark_as_old: bool = False
     ):
         """
         Add new faculty to centralized NEW CONTACTS sheet
@@ -660,6 +750,7 @@ class GoogleSheetsManager:
         Args:
             university_name: Display name of university
             new_faculty: List of new faculty members
+            mark_as_old: If True, mark contacts as OLD (for baseline first scrape)
         """
         if not new_faculty:
             return
@@ -725,7 +816,7 @@ class GoogleSheetsManager:
                     faculty.phone or '',                   # Phone
                     faculty.research_interests or '',      # Research Interests
                     faculty.faculty_id,                    # Faculty ID
-                    'NEW',                                 # Status
+                    'OLD' if mark_as_old else 'NEW',      # Status
                     ''                                      # Notes (for sales rep)
                 ]
                 rows.append(row)
@@ -740,7 +831,10 @@ class GoogleSheetsManager:
             # Append only genuinely new contacts
             contacts_sheet.append_rows(rows)
 
-            self.logger.info(f"✓ Added {len(rows)} new contacts to NEW CONTACTS sheet")
+            if mark_as_old:
+                self.logger.info(f"✓ Added {len(rows)} baseline contacts (marked OLD) to NEW CONTACTS sheet")
+            else:
+                self.logger.info(f"✓ Added {len(rows)} new contacts to NEW CONTACTS sheet")
 
         except Exception as e:
             self.logger.error(f"Failed to add to NEW CONTACTS sheet: {e}")
@@ -805,7 +899,8 @@ class GoogleSheetsManager:
         university_name: str = None,
         status: str = None,
         limit: int = 50,
-        offset: int = 0
+        offset: int = 0,
+        days_back: Optional[int] = None
     ) -> Dict[str, Any]:
         """
         Retrieve contacts from NEW CONTACTS sheet with filtering and pagination
@@ -815,6 +910,7 @@ class GoogleSheetsManager:
             status: Filter by 'NEW' or 'OLD' (optional)
             limit: Max results to return
             offset: Pagination offset
+            days_back: Filter contacts added in last N days (optional, None = all time)
 
         Returns:
             {
@@ -862,8 +958,41 @@ class GoogleSheetsManager:
                     if r.get('Status', '').strip().upper() == status.strip().upper()
                 ]
 
-            # Sort by Date Added in descending order (newest first)
-            all_records.sort(key=lambda x: x.get('Date Added', ''), reverse=True)
+            # Filter by date if days_back is provided
+            if days_back is not None:
+                from datetime import datetime, timedelta
+                cutoff_date = datetime.now() - timedelta(days=days_back)
+
+                filtered_records = []
+                for r in all_records:
+                    date_str = r.get('Date Added', '').strip()
+                    if not date_str:
+                        continue  # Skip records without date
+
+                    try:
+                        # Parse date format: 'YYYY-MM-DD HH:MM:SS'
+                        contact_date = datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S')
+                        if contact_date >= cutoff_date:
+                            filtered_records.append(r)
+                    except ValueError:
+                        # If date parsing fails, include the contact (be permissive)
+                        self.logger.warning(f"Failed to parse date '{date_str}' - including in results")
+                        filtered_records.append(r)
+
+                all_records = filtered_records
+
+            # Sort: NEW contacts first (by date desc), then OLD contacts (by date desc)
+            # This ensures NEW contacts appear at the top, followed by all OLD contacts
+            def sort_key(record):
+                status = record.get('Status', '').strip().upper()
+                date_added = record.get('Date Added', '')
+                # Return tuple: (status_priority, date)
+                # NEW=1 (higher priority), OLD=0 (lower priority)
+                # With reverse=True, NEW (1) comes before OLD (0), and newer dates come first
+                status_priority = 1 if status == 'NEW' else 0
+                return (status_priority, date_added)
+
+            all_records.sort(key=sort_key, reverse=True)
 
             total = len(all_records)
 
@@ -1110,12 +1239,29 @@ class GoogleSheetsManager:
                     # Try to extract from URL if not in name
                     department = extract_department_from_url(url) or ''
 
-                # Get contact counts for this university
-                uni_contacts = contact_counts.get(university_name, {'new': 0, 'old': 0})
+                # Enhance university name with department for contact lookup
+                # This ensures we match the same enhanced names used when writing to NEW CONTACTS
+                enhanced_name = university_name
+                if ' - ' not in university_name and department:
+                    enhanced_name = f"{university_name} - {department}"
 
-                # Log if all directories have the same count (debugging)
-                if uni_contacts['new'] > 0:
-                    self.logger.debug(f"Counts for '{university_name}': {uni_contacts}")
+                # Get contact counts using enhanced name
+                # Try enhanced name first
+                uni_contacts = contact_counts.get(enhanced_name, None)
+
+                # If enhanced name not found, try original name ONLY if it already has " - "
+                # (meaning it's already a specific department, not a generic name)
+                if uni_contacts is None:
+                    if ' - ' in university_name:
+                        uni_contacts = contact_counts.get(university_name, {'new': 0, 'old': 0})
+                    else:
+                        # For generic names without departments, don't fall back to generic count
+                        # This prevents showing misleading totals
+                        uni_contacts = {'new': 0, 'old': 0}
+
+                # Log contact lookup for debugging
+                if enhanced_name != university_name:
+                    self.logger.debug(f"Contact lookup: '{university_name}' -> '{enhanced_name}': {uni_contacts}")
 
                 # Create directory entry
                 directory = {
