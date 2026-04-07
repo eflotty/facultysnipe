@@ -1264,9 +1264,10 @@ class GoogleSheetsManager:
                     self.logger.debug(f"Contact lookup: '{university_name}' -> '{enhanced_name}': {uni_contacts}")
 
                 # Create directory entry
+                # Use enhanced_name for university_name to match what's stored in NEW CONTACTS
                 directory = {
                     'university_id': university_id,
-                    'university_name': university_name,
+                    'university_name': enhanced_name,  # Use enhanced name for contact queries
                     'department': department or university_name,
                     'url': url,
                     'enabled': enabled,
