@@ -375,12 +375,15 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 15px;
         }
 
         .university-group-name {
             font-size: 18px;
             font-weight: 600;
             color: #e0e0e0;
+            word-break: break-word;
+            line-height: 1.4;
         }
 
         .contact-count-badge {
@@ -1013,13 +1016,13 @@
             const html = Object.entries(groups).map(([parent, data]) => `
                 <div class="university-group" onclick="showDirectories('${escapeHtml(parent)}')">
                     <div class="university-group-header">
-                        <div>
+                        <div style="flex: 1; min-width: 0;">
                             <div class="university-group-name">${escapeHtml(parent)}</div>
                             <div style="font-size: 13px; color: #9ca3af; margin-top: 5px;">
                                 ${data.directories.length} department${data.directories.length !== 1 ? 's' : ''}
                             </div>
                         </div>
-                        <div>
+                        <div style="flex-shrink: 0;">
                             <span class="contact-count-badge">
                                 ${data.total_new} NEW
                             </span>
