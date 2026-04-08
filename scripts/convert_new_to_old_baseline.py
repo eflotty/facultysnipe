@@ -9,7 +9,10 @@ This script:
 3. Ensures first_scrape_completed = TRUE for all universities
 
 Usage:
-    python3 scripts/convert_new_to_old_baseline.py
+    python3 scripts/convert_new_to_old_baseline.py [--force]
+
+Options:
+    --force    Skip confirmation prompt
 """
 
 from dotenv import load_dotenv
@@ -22,7 +25,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 from google_sheets import GoogleSheetsManager
 from config import setup_logging
 
-def convert_to_baseline():
+def convert_to_baseline(force=False):
     """Convert all NEW contacts to OLD (baseline)"""
     logger = setup_logging('ConvertBaseline')
 
@@ -36,10 +39,14 @@ def convert_to_baseline():
     print("\nUse this if baseline reset happened but contacts are still NEW.")
     print("\n" + "="*60)
 
-    response = input("\nAre you sure you want to proceed? (yes/no): ")
-    if response.lower() != 'yes':
-        print("❌ Cancelled")
-        return
+    if not force:
+        response = input("\nAre you sure you want to proceed? (yes/no): ")
+        if response.lower() != 'yes':
+            print("❌ Cancelled")
+            return
+    else:
+        print("\n⚡ Running in FORCE mode (skipping confirmation)")
+
 
     try:
         sheets = GoogleSheetsManager()
@@ -152,4 +159,5 @@ def convert_to_baseline():
         sys.exit(1)
 
 if __name__ == '__main__':
-    convert_to_baseline()
+    force = '--force' in sys.argv
+    convert_to_baseline(force=force)
