@@ -1093,6 +1093,7 @@
                     apiUrl += `&days_back=${browseState.timeFilter}`;
                 }
 
+                console.log('Fetching contacts:', apiUrl);
                 const response = await fetch(apiUrl);
                 const data = await response.json();
 
@@ -1100,10 +1101,13 @@
                     renderContacts(data.contacts, data.total);
                     updateBreadcrumb();
                 } else {
-                    container.innerHTML = '<div style="text-align: center; padding: 40px; color: #f87171;">Error loading contacts</div>';
+                    const errorMsg = data.error || 'Unknown error';
+                    console.error('API error:', errorMsg);
+                    container.innerHTML = '<div style="text-align: center; padding: 40px; color: #f87171;">Error loading contacts: ' + escapeHtml(errorMsg) + '</div>';
                 }
             } catch (error) {
-                container.innerHTML = '<div style="text-align: center; padding: 40px; color: #f87171;">Failed to load contacts</div>';
+                console.error('Failed to fetch contacts:', error);
+                container.innerHTML = '<div style="text-align: center; padding: 40px; color: #f87171;">Failed to load contacts: ' + escapeHtml(error.message) + '</div>';
             }
         }
 
