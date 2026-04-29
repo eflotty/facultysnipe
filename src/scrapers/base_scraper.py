@@ -33,11 +33,13 @@ class Faculty:
         Generate deterministic hash ID from key fields
 
         Returns:
-            8-character hex hash
+            16-character hex hash
         """
-        # Use name + email + title for ID generation
-        # This ensures same person gets same ID even if other fields change
-        id_string = f"{self.name.lower().strip()}|{(self.email or '').lower().strip()}|{(self.title or '').lower().strip()}"
+        # FIX: Use ONLY name + email for ID generation (not title)
+        # Title can change (e.g., Associate Professor -> Professor) which would
+        # create duplicate entries for the same person. Name + email are stable
+        # identifiers that uniquely identify a faculty member.
+        id_string = f"{self.name.lower().strip()}|{(self.email or '').lower().strip()}"
         return hashlib.sha256(id_string.encode()).hexdigest()[:16]
 
     def to_dict(self) -> Dict[str, Any]:

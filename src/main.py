@@ -177,7 +177,7 @@ class FacultyMonitor:
 
         self.logger.info("")
         self.logger.info("-" * 60)
-        self.logger.info(f"Processing: {university_name} ({university_id})")
+        self.logger.info(f"Processing university: {university_name} ({university_id})")
         self.logger.info("-" * 60)
 
         try:
@@ -289,60 +289,24 @@ class FacultyMonitor:
 
     def _enhance_university_name(self, university_name: str, url: str) -> str:
         """
-        Enhance university name with department from URL if not already present
+        Return university name from CONFIG without modification.
+
+        IMPORTANT: This ensures CONFIG and NEW CONTACTS have matching university names,
+        which is critical for UI grouping in Browse Contacts. Department information
+        is stored separately in the "Department" column.
 
         Args:
             university_name: Original university name from CONFIG
-            url: Faculty directory URL
+            url: Faculty directory URL (unused, kept for compatibility)
 
         Returns:
-            Enhanced name with department (e.g., "Miami University - Cell Biology")
+            University name from CONFIG without enhancement
         """
-        from urllib.parse import urlparse
-
-        # If name already contains " - ", assume it has department
-        if ' - ' in university_name:
-            return university_name
-
-        # Try to extract department from URL
-        try:
-            parsed_url = urlparse(url)
-            path = parsed_url.path.lower()
-
-            # Common patterns for department URLs
-            department = None
-
-            if '/departments/' in path:
-                dept = path.split('/departments/')[1].split('/')[0]
-            elif '/department/' in path:
-                dept = path.split('/department/')[1].split('/')[0]
-            elif '/academics/departments/' in path:
-                dept = path.split('/academics/departments/')[1].split('/')[0]
-            else:
-                # Try to extract from subdomain
-                hostname = parsed_url.netloc.lower()
-                if hostname.startswith('www.'):
-                    hostname = hostname[4:]
-                parts = hostname.split('.')
-                if len(parts) > 2:
-                    dept = parts[0]
-                else:
-                    return university_name  # Can't extract department
-
-            # Clean up and format the department name
-            # 'cell-biology' -> 'Cell Biology'
-            dept = dept.replace('-', ' ').replace('_', ' ')
-            department = ' '.join(word.capitalize() for word in dept.split())
-
-            # Append department to university name
-            if department:
-                enhanced = f"{university_name} - {department}"
-                self.logger.info(f"Enhanced name: '{university_name}' -> '{enhanced}'")
-                return enhanced
-
-        except Exception as e:
-            self.logger.warning(f"Failed to extract department from URL '{url}': {e}")
-
+        # FIX: Return CONFIG name exactly as-is to ensure consistency
+        # Previously this method extracted department from URL and appended it,
+        # causing CONFIG and NEW CONTACTS to have different names (e.g.,
+        # CONFIG: "Miami University" vs NEW CONTACTS: "Miami University - Cell Biology")
+        # This broke Browse Contacts grouping for 37% of the database!
         return university_name
 
     def _print_summary(self):

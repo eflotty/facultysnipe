@@ -1239,35 +1239,19 @@ class GoogleSheetsManager:
                     # Try to extract from URL if not in name
                     department = extract_department_from_url(url) or ''
 
-                # Enhance university name with department for contact lookup
-                # This ensures we match the same enhanced names used when writing to NEW CONTACTS
-                enhanced_name = university_name
-                if ' - ' not in university_name and department:
-                    enhanced_name = f"{university_name} - {department}"
+                # FIX: Use CONFIG university name exactly as-is (no enhancement)
+                # This matches the fix in main.py _enhance_university_name() which now
+                # returns CONFIG names without modification. This ensures CONFIG and
+                # NEW CONTACTS always have matching names for proper grouping.
 
-                # Get contact counts using enhanced name
-                # Try enhanced name first
-                uni_contacts = contact_counts.get(enhanced_name, None)
-
-                # If enhanced name not found, try original name ONLY if it already has " - "
-                # (meaning it's already a specific department, not a generic name)
-                if uni_contacts is None:
-                    if ' - ' in university_name:
-                        uni_contacts = contact_counts.get(university_name, {'new': 0, 'old': 0})
-                    else:
-                        # For generic names without departments, don't fall back to generic count
-                        # This prevents showing misleading totals
-                        uni_contacts = {'new': 0, 'old': 0}
-
-                # Log contact lookup for debugging
-                if enhanced_name != university_name:
-                    self.logger.debug(f"Contact lookup: '{university_name}' -> '{enhanced_name}': {uni_contacts}")
+                # Get contact counts using CONFIG name directly
+                uni_contacts = contact_counts.get(university_name, {'new': 0, 'old': 0})
 
                 # Create directory entry
-                # Use enhanced_name for university_name to match what's stored in NEW CONTACTS
+                # Use CONFIG university_name directly (no enhancement)
                 directory = {
                     'university_id': university_id,
-                    'university_name': enhanced_name,  # Use enhanced name for contact queries
+                    'university_name': university_name,  # Use CONFIG name exactly
                     'department': department or university_name,
                     'url': url,
                     'enabled': enabled,
