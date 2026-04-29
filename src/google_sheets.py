@@ -999,22 +999,30 @@ class GoogleSheetsManager:
             # Apply pagination
             paginated_records = all_records[offset:offset + limit]
 
+            # Helper to sanitize values for JSON serialization
+            def sanitize_value(value):
+                """Convert non-JSON-serializable values (Infinity, NaN) to empty strings"""
+                import math
+                if isinstance(value, float) and (math.isinf(value) or math.isnan(value)):
+                    return ''
+                return value
+
             # Format contacts
             contacts = []
             for record in paginated_records:
                 contact = {
-                    'date_added': record.get('Date Added', ''),
-                    'university': record.get('University', ''),
-                    'name': record.get('Name', ''),
-                    'title': record.get('Title', ''),
-                    'email': record.get('Email', ''),
-                    'profile_url': record.get('Profile URL', ''),
-                    'department': record.get('Department', ''),
-                    'phone': record.get('Phone', ''),
-                    'research_interests': record.get('Research Interests', ''),
-                    'faculty_id': record.get('Faculty ID', ''),
-                    'status': record.get('Status', ''),
-                    'notes': record.get('Notes', '')
+                    'date_added': sanitize_value(record.get('Date Added', '')),
+                    'university': sanitize_value(record.get('University', '')),
+                    'name': sanitize_value(record.get('Name', '')),
+                    'title': sanitize_value(record.get('Title', '')),
+                    'email': sanitize_value(record.get('Email', '')),
+                    'profile_url': sanitize_value(record.get('Profile URL', '')),
+                    'department': sanitize_value(record.get('Department', '')),
+                    'phone': sanitize_value(record.get('Phone', '')),
+                    'research_interests': sanitize_value(record.get('Research Interests', '')),
+                    'faculty_id': sanitize_value(record.get('Faculty ID', '')),
+                    'status': sanitize_value(record.get('Status', '')),
+                    'notes': sanitize_value(record.get('Notes', ''))
                 }
                 contacts.append(contact)
 
