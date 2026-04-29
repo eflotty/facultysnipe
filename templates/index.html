@@ -583,17 +583,53 @@
         <!-- Dashboard Tab (existing content) -->
         <div id="tab-dashboard" class="tab-content active">
 
+        <!-- Current Database State -->
+        <div class="card" style="background: rgba(52, 211, 153, 0.1); border: 1px solid rgba(52, 211, 153, 0.3); margin-bottom: 20px; padding: 20px;">
+            <div style="font-size: 18px; font-weight: 600; margin-bottom: 15px; color: #34d399;">
+                📊 Current Database
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
+                <div>
+                    <div style="font-size: 12px; color: #9ca3af; margin-bottom: 3px;">Total Contacts</div>
+                    <div id="current-total-contacts" style="font-size: 24px; font-weight: 700; color: #34d399;">
+                        <span class="spinner"></span>
+                    </div>
+                </div>
+                <div>
+                    <div style="font-size: 12px; color: #9ca3af; margin-bottom: 3px;">NEW</div>
+                    <div id="current-new-contacts" style="font-size: 24px; font-weight: 700; color: #667eea;">
+                        <span class="spinner"></span>
+                    </div>
+                </div>
+                <div>
+                    <div style="font-size: 12px; color: #9ca3af; margin-bottom: 3px;">OLD (Baseline)</div>
+                    <div id="current-old-contacts" style="font-size: 24px; font-weight: 700; color: #9ca3af;">
+                        <span class="spinner"></span>
+                    </div>
+                </div>
+                <div>
+                    <div style="font-size: 12px; color: #9ca3af; margin-bottom: 3px;">Universities</div>
+                    <div id="current-universities" style="font-size: 24px; font-weight: 700; color: #f093fb;">
+                        <span class="spinner"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- System Status Banner -->
         <div id="system-status-banner" class="card" style="background: rgba(102, 126, 234, 0.1); border: 1px solid rgba(102, 126, 234, 0.3); margin-bottom: 30px; padding: 20px;">
+            <div style="font-size: 18px; font-weight: 600; margin-bottom: 15px;">
+                ⏱️ Last Scrape Run
+            </div>
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
                 <div>
-                    <div style="font-size: 14px; color: #9ca3af; margin-bottom: 5px;">Most Recent Run</div>
+                    <div style="font-size: 14px; color: #9ca3af; margin-bottom: 5px;">Status</div>
                     <div id="last-run-status" style="font-size: 16px; font-weight: 600;">
                         <span class="spinner"></span> Loading...
                     </div>
                 </div>
                 <div>
-                    <div style="font-size: 14px; color: #9ca3af; margin-bottom: 5px;">Next Run</div>
+                    <div style="font-size: 14px; color: #9ca3af; margin-bottom: 5px;">Next Scheduled</div>
                     <div id="next-run-time" style="font-size: 16px; font-weight: 600;">
                         Monday or Thursday at 8:00 PM UTC
                     </div>
@@ -752,8 +788,8 @@
         <!-- Most Recent New Tab -->
         <div id="tab-recent" class="tab-content">
             <div class="card">
-                <div class="card-title">Most Recent New Contacts</div>
-                <div class="card-subtitle">Newest faculty discoveries across all directories</div>
+                <div class="card-title">Recently Added Contacts</div>
+                <div class="card-subtitle">Most recent contacts added to database (sorted by date added)</div>
 
                 <!-- Time Filter for Recent Tab -->
                 <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; align-items: center; margin: 20px 0;">
@@ -896,6 +932,31 @@
             }
         }
 
+        // Load current database stats
+        async function loadCurrentDatabaseStats() {
+            try {
+                const response = await fetch('/api/contacts/summary');
+                const data = await response.json();
+
+                if (data.success) {
+                    const summary = data.summary;
+                    const byUniversity = data.by_university;
+
+                    // Update current database stats
+                    document.getElementById('current-total-contacts').textContent = summary.total_contacts.toLocaleString();
+                    document.getElementById('current-new-contacts').textContent = summary.total_new.toLocaleString();
+                    document.getElementById('current-old-contacts').textContent = summary.total_old.toLocaleString();
+                    document.getElementById('current-universities').textContent = Object.keys(byUniversity).length;
+                }
+            } catch (error) {
+                console.error('Failed to load current database stats:', error);
+                document.getElementById('current-total-contacts').textContent = 'Error';
+                document.getElementById('current-new-contacts').textContent = 'Error';
+                document.getElementById('current-old-contacts').textContent = 'Error';
+                document.getElementById('current-universities').textContent = 'Error';
+            }
+        }
+
         // Load system status
         async function loadSystemStatus() {
             try {
@@ -917,8 +978,11 @@
                             <div style="font-size: 12px; color: #9ca3af; font-weight: 400; margin-top: 3px;">
                                 ${lastRun.timestamp} UTC
                             </div>
+                            ${lastRun.universities_processed ? `<div style="font-size: 12px; color: #9ca3af; font-weight: 400;">
+                                ${lastRun.universities_processed} directories scraped
+                            </div>` : ''}
                             ${lastRun.new_faculty > 0 ? `<div style="font-size: 12px; color: #34d399; font-weight: 400;">
-                                ${lastRun.new_faculty} new faculty detected
+                                ${lastRun.new_faculty} contacts added in that run
                             </div>` : ''}
                         `;
                     } else {
@@ -1386,8 +1450,9 @@
             container.innerHTML = '<div style="text-align: center; padding: 40px;"><div class="spinner"></div><span class="loading-text">Loading recent contacts...</span></div>';
 
             try {
-                // Fetch only NEW contacts across all universities
-                let apiUrl = `/api/contacts?status=NEW&limit=100`;
+                // Fetch recently ADDED contacts (by date) - includes both NEW and OLD
+                // This shows what was most recently discovered/added to database
+                let apiUrl = `/api/contacts?limit=100`;
 
                 if (daysBack !== 'all') {
                     apiUrl += `&days_back=${daysBack}`;
@@ -1402,6 +1467,7 @@
                     container.innerHTML = '<div style="text-align: center; padding: 40px; color: #f87171;">Error loading contacts</div>';
                 }
             } catch (error) {
+                console.error('Failed to load recent contacts:', error);
                 container.innerHTML = '<div style="text-align: center; padding: 40px; color: #f87171;">Failed to load contacts</div>';
             }
         }
@@ -1411,17 +1477,26 @@
             const container = document.getElementById('recent-contacts-container');
 
             if (contacts.length === 0) {
-                container.innerHTML = '<div style="text-align: center; padding: 40px; color: #9ca3af;">No new contacts found</div>';
+                container.innerHTML = '<div style="text-align: center; padding: 40px; color: #9ca3af;">No recent contacts found</div>';
                 return;
             }
 
             const html = contacts.map(contact => {
                 const dateAdded = contact.date_added ? new Date(contact.date_added).toLocaleDateString() : 'N/A';
+                const statusBadgeClass = contact.status === 'NEW' ? 'new-badge' : 'old-badge';
+                const statusBadgeStyle = contact.status === 'NEW'
+                    ? 'background: linear-gradient(135deg, #34d399 0%, #10b981 100%); color: white;'
+                    : 'background: rgba(156, 163, 175, 0.2); color: #9ca3af;';
 
                 return `
                     <div class="slim-contact-card" onclick="showContactDetails('${escapeHtml(contact.faculty_id)}')">
                         <div class="slim-contact-info">
-                            <div class="slim-contact-name">${escapeHtml(contact.name)}</div>
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                                <div class="slim-contact-name">${escapeHtml(contact.name)}</div>
+                                <span style="padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; ${statusBadgeStyle}">
+                                    ${contact.status}
+                                </span>
+                            </div>
                             <div class="slim-contact-meta">
                                 ${escapeHtml(contact.university)}
                                 ${contact.department ? `• ${escapeHtml(contact.department)}` : ''}
@@ -1504,14 +1579,16 @@
             return div.innerHTML;
         }
 
-        // Load universities on page load
+        // Load data on page load
         loadUniversities();
         loadSystemStatus();
+        loadCurrentDatabaseStats();
 
         // Auto-refresh every 30 seconds
         setInterval(() => {
             loadUniversities();
             loadSystemStatus();
+            loadCurrentDatabaseStats();
         }, 30000);
     </script>
 </body>
