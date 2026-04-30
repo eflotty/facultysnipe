@@ -1276,8 +1276,27 @@ class GoogleSheetsManager:
                     }
 
                 grouped[parent]['directories'].append(directory)
-                grouped[parent]['total_new'] += uni_contacts['new']
-                grouped[parent]['total_old'] += uni_contacts['old']
+                # DON'T sum here - we'll recalculate after to avoid double-counting
+
+            # FIX: Recalculate parent totals by deduplicating university names
+            # Multiple directories can have the same university_name (e.g., "Miami University")
+            # We should only count those contacts ONCE at the parent level
+            for parent in grouped:
+                # Track which university_names we've already counted
+                counted_universities = set()
+                total_new = 0
+                total_old = 0
+
+                for directory in grouped[parent]['directories']:
+                    uni_name = directory['university_name']
+                    # Only count this university_name once
+                    if uni_name not in counted_universities:
+                        counted_universities.add(uni_name)
+                        total_new += directory['contacts']['new']
+                        total_old += directory['contacts']['old']
+
+                grouped[parent]['total_new'] = total_new
+                grouped[parent]['total_old'] = total_old
 
             return grouped
 
