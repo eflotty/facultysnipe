@@ -229,13 +229,14 @@ class FacultyMonitor:
                 self.stats['total_new_faculty'] += len(new_faculty)
                 self.stats['total_changed_faculty'] += len(changed_faculty)
 
+            # FIX: Check if this is the first scrape BEFORE the if block
+            # so is_first is always defined when used later (lines 252, 265)
+            is_first = self.sheets.is_first_scrape(university_id)
+
             # Add new faculty to centralized NEW CONTACTS sheet (thread-safe)
             if new_faculty:
                 # Enhance university name with department from URL if not already present
                 enhanced_name = self._enhance_university_name(university_name, url)
-
-                # Check if this is the first scrape for this university
-                is_first = self.sheets.is_first_scrape(university_id)
 
                 with self.new_contacts_lock:
                     if is_first:

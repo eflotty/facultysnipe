@@ -270,12 +270,13 @@ class GoogleSheetsManager:
         # Try multiple sheet name formats
         sheet_names_to_try = []
 
-        # Try university_name first if provided
-        if university_name:
-            sheet_names_to_try.append(self._sanitize_sheet_name(university_name))
-
-        # Fallback to university_id
+        # FIX: Try university_id FIRST as it's the primary key and more stable
+        # This ensures we find existing sheets even if university_name has changed
         sheet_names_to_try.append(university_id)
+
+        # Fallback to university_name if provided and different from university_id
+        if university_name and university_name != university_id:
+            sheet_names_to_try.append(self._sanitize_sheet_name(university_name))
 
         for sheet_name in sheet_names_to_try:
             try:

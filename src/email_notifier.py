@@ -46,6 +46,15 @@ class EmailNotifier:
         """
         changed_faculty = changed_faculty or []
 
+        # FIX: Deduplicate - remove anyone from changed_faculty who is already in new_faculty
+        # to prevent people being listed twice in the email
+        if new_faculty and changed_faculty:
+            new_faculty_ids = {f.faculty_id for f in new_faculty}
+            original_changed_count = len(changed_faculty)
+            changed_faculty = [f for f in changed_faculty if f.faculty_id not in new_faculty_ids]
+            if original_changed_count != len(changed_faculty):
+                self.logger.info(f"Deduplicated {original_changed_count - len(changed_faculty)} faculty from changed list (already in new list)")
+
         # Don't send if no changes
         if not new_faculty and not changed_faculty:
             self.logger.info(f"No changes to report for {university_name}")
